@@ -4,7 +4,6 @@ const path = require("path");
 const crypto = require("crypto");
 const { URL } = require("url");
 const { DatabaseSync } = require("node:sqlite");
-const nodemailer = require("nodemailer");
 
 const ROOT = __dirname;
 const ENV_PATH = path.join(ROOT, ".env");
@@ -44,12 +43,8 @@ const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
-const SMTP_HOST = process.env.SMTP_HOST || "";
-const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
-const SMTP_SECURE = String(process.env.SMTP_SECURE || "false").toLowerCase() === "true";
-const SMTP_USER = process.env.SMTP_USER || "";
-const SMTP_PASS = process.env.SMTP_PASS || "";
-const NOTIFY_EMAIL_FROM = process.env.NOTIFY_EMAIL_FROM || SMTP_USER || "";
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "SkillNest <onboarding@resend.dev>";
 const NOTIFY_EMAIL_TO = process.env.NOTIFY_EMAIL_TO || "";
 
 if (!fs.existsSync(DATA_DIR)) {
@@ -58,18 +53,7 @@ if (!fs.existsSync(DATA_DIR)) {
 
 const db = new DatabaseSync(DB_PATH);
 const adminSessions = new Map();
-const mailTransporter =
-  SMTP_HOST && SMTP_USER && SMTP_PASS && NOTIFY_EMAIL_FROM && NOTIFY_EMAIL_TO
-    ? nodemailer.createTransport({
-        host: SMTP_HOST,
-        port: SMTP_PORT,
-        secure: SMTP_SECURE,
-        auth: {
-          user: SMTP_USER,
-          pass: SMTP_PASS,
-        },
-      })
-    : null;
+const resendConfigured = Boolean(RESEND_API_KEY && RESEND_FROM_EMAIL && NOTIFY_EMAIL_TO);
 
 function createPasswordHash(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -456,17 +440,28 @@ function extractGeminiText(payload) {
 }
 
 async function sendNotificationEmail({ subject, text, html }) {
-  if (!mailTransporter) {
+  if (!resendConfigured) {
     return false;
   }
-
-  await mailTransporter.sendMail({
-    from: NOTIFY_EMAIL_FROM,
-    to: NOTIFY_EMAIL_TO,
-    subject,
-    text,
-    html,
+  const resendResponse = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM_EMAIL,
+      to: [NOTIFY_EMAIL_TO],
+      subject,
+      text,
+      html,
+    }),
   });
+
+  const resendPayload = await resendResponse.json();
+  if (!resendResponse.ok) {
+    throw new Error(resendPayload?.message || resendPayload?.error || "Resend request failed.");
+  }
 
   return true;
 }
@@ -705,7 +700,7 @@ function handleAdminOverview(request, response) {
         workshops: selectWorkshopCount.get().count,
       },
       notifications: {
-        enabled: Boolean(mailTransporter),
+        enabled: resendConfigured,
         recipient: NOTIFY_EMAIL_TO || "Not configured",
       },
       inquiries: selectRecentInquiries.all(),
@@ -972,7 +967,7 @@ async function handleAdminTestEmail(request, response) {
   try {
     if (!mailTransporter) {
       sendJson(response, 400, {
-        error: "Email notifications are not configured yet. Add SMTP settings to .env first.",
+        error: "Email notifications are not configured yet. Add Resend settings to .env first.",
       });
       return;
     }

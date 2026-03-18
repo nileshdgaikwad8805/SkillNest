@@ -10,22 +10,19 @@ Use one of these paths:
 2. Netlify or Vercel for the frontend, plus Render or Railway for the backend
    This works well if you want the public pages on a static host and the API on a separate backend host.
 
-## Gmail Notifications
+## Resend Notifications
 
-For Gmail SMTP, do not use your normal Gmail password.
-Create a Google App Password and place it in `SMTP_PASS`.
+Resend is the recommended setup for Render Free because it uses an API instead of SMTP ports.
 
 Required `.env` values:
 
 ```env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=nileshdgaikwad8805@gmail.com
-SMTP_PASS=your_gmail_app_password
-NOTIFY_EMAIL_FROM=nileshdgaikwad8805@gmail.com
+RESEND_API_KEY=your_resend_api_key
+RESEND_FROM_EMAIL=SkillNest <onboarding@resend.dev>
 NOTIFY_EMAIL_TO=nileshdgaikwad8805@gmail.com
 ```
+
+Resend’s docs show sending through their Email API from Node.js and note you should create an API key and verify a domain for production sending: [Send emails with Node.js](https://resend.com/docs/send-with-nodejs), [Send Email API](https://resend.com/docs/api-reference/emails), [Managing Domains](https://resend.com/docs/dashboard/domains/introduction).
 
 After updating `.env`, restart the server and use the `Send Test Email` button in the admin dashboard.
 
@@ -35,7 +32,7 @@ After updating `.env`, restart the server and use the `Send Test Email` button i
 2. Create a new Render Web Service from the repo.
 3. Use the included `render.yaml`.
 4. Add environment variables from `.env.example`, including:
-   `GEMINI_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, Gmail SMTP values, and `ALLOWED_ORIGINS`.
+   `GEMINI_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, Resend values, and `ALLOWED_ORIGINS`.
 5. Keep the Render disk enabled so `data/skillnest.db` persists.
 6. Confirm the health check passes at `/api/health`.
 7. Open `/admin-login.html` after deploy and verify:

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkillNest | Admin Login</title>
+    <meta name="description" content="Admin login for the SkillNest dashboard." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <main class="section">
+        <section class="admin-login-card reveal is-visible">
+          <p class="eyebrow">Admin Login</p>
+          <h1>Access the SkillNest dashboard.</h1>
+          <p>Use your admin credentials to manage workshops and export saved leads.</p>
+          <form class="contact-card" id="admin-login-form">
+            <label>
+              Username
+              <input type="text" name="username" placeholder="Admin username" required />
+            </label>
+            <label>
+              Password
+              <input type="password" name="password" placeholder="Admin password" required />
+            </label>
+            <button type="submit" class="button">Login</button>
+            <p class="form-feedback" id="admin-login-feedback" hidden></p>
+          </form>
+        </section>
+      </main>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="admin-login.js"></script>
+  </body>
+</html>

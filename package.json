@@ -1,0 +1,12 @@
+{
+  "name": "skillnest-site",
+  "private": true,
+  "version": "1.0.0",
+  "description": "SkillNest marketing site with a local Gemini chatbot proxy.",
+  "dependencies": {
+    "nodemailer": "^6.10.1"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

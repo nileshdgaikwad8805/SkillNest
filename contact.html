@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkillNest | Contact</title>
+    <meta
+      name="description"
+      content="Contact SkillNest in Pune for Cloud, Data Analysis, AI, and Cybersecurity trainings and workshops."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="contact">
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand-mark" href="index.html">
+          <span class="brand-mark__icon">S</span>
+          <span class="brand-mark__text">
+            <span class="brand-mark__name">SkillNest</span>
+            <span class="brand-mark__tag">Knowledge is the power.</span>
+          </span>
+        </a>
+        <nav class="site-nav">
+          <a href="index.html" data-nav="home">Home</a>
+          <a href="about.html" data-nav="about">About</a>
+          <div class="nav-group" data-nav-group="services">
+            <a href="services.html" data-nav="services">Services</a>
+            <div class="nav-dropdown">
+              <a href="services.html">All Services</a>
+              <a href="corporate-training.html">Corporate Training</a>
+              <a href="certifications.html">Certifications</a>
+            </div>
+          </div>
+          <a href="programs.html" data-nav="programs">Programs</a>
+          <a href="workshops.html" data-nav="workshops">Workshops</a>
+          <a href="contact.html" data-nav="contact">Contact</a>
+        </nav>
+        <a class="button button--ghost" href="contact.html">Talk to Us</a>
+      </header>
+
+      <main>
+        <section class="page-hero reveal">
+          <p class="eyebrow">Contact</p>
+          <h1>Let's help more learners discover SkillNest.</h1>
+          <p>
+            Use this page as the main inquiry point for Cloud, Data Analysis, AI,
+            and Cybersecurity trainings, plus free and paid workshops in Pune.
+          </p>
+        </section>
+
+        <section class="section cta cta--single">
+          <div class="cta__content reveal">
+            <p class="eyebrow">Talk to our team</p>
+            <h2>Start with the right training or workshop direction.</h2>
+            <p>
+              SkillNest is here for college students, early professionals,
+              freshers, and knowledge seekers who want practical technology
+              learning with clear guidance.
+            </p>
+            <div class="contact-details">
+              <p><strong>Email</strong> nileshdgaikwad8805@gmail.com</p>
+              <p><strong>Phone</strong> 9284543320</p>
+              <p><strong>Office</strong> Pune, Maharashtra, India</p>
+            </div>
+            <div class="cta-inline">
+              <a class="button" href="workshops.html">See Upcoming Workshops</a>
+            </div>
+          </div>
+          <form
+            class="contact-card reveal"
+            action="/api/contact"
+            method="POST"
+            data-fallback-email="nileshdgaikwad8805@gmail.com"
+            data-api-endpoint="/api/contact"
+          >
+            <label>
+              Name
+              <input type="text" name="name" placeholder="Your name" required />
+            </label>
+            <label>
+              Email
+              <input type="email" name="email" placeholder="you@example.com" required />
+            </label>
+            <label>
+              Company or College
+              <input type="text" name="organization" placeholder="College, company, or institute" />
+            </label>
+            <label>
+              Interested In
+              <select name="interest" required>
+                <option value="">Select a training or workshop</option>
+                <option value="Cloud Training">Cloud Training</option>
+                <option value="Data Analysis Training">Data Analysis Training</option>
+                <option value="AI Training">AI Training</option>
+                <option value="Cybersecurity Training">Cybersecurity Training</option>
+                <option value="Free Workshop">Free Workshop</option>
+                <option value="Paid Workshop">Paid Workshop</option>
+              </select>
+            </label>
+            <label>
+              Message
+              <textarea
+                rows="5"
+                name="message"
+                placeholder="Tell us which training or workshop you are interested in"
+                required
+              ></textarea>
+            </label>
+            <button type="submit" class="button">Send Inquiry</button>
+            <p class="form-feedback" hidden></p>
+            <p class="form-note">
+              On localhost, this form saves directly into the SkillNest app database.
+            </p>
+          </form>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <p>&copy; 2026 SkillNest, Pune, Maharashtra. Knowledge is the power.</p>
+        <div>
+          <a href="index.html">Home</a>
+          <a href="about.html">About</a>
+          <a href="services.html">Services</a>
+          <a href="programs.html">Programs</a>
+          <a href="workshops.html">Workshops</a>
+          <a href="admin.html">Admin</a>
+          <a href="contact.html">Contact</a>
+        </div>
+      </footer>
+    </div>
+
+    <a
+      class="whatsapp-float"
+      href="https://wa.me/919284543320?text=Hello%20SkillNest%2C%20I%20want%20to%20know%20more%20about%20your%20trainings%20and%20workshops."
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Chat with SkillNest on WhatsApp"
+    >
+      WhatsApp
+    </a>
+
+    <section class="chatbot" aria-label="SkillNest chatbot">
+      <button class="chatbot__toggle" type="button" aria-expanded="false" aria-controls="chatbot-panel">
+        Ask SkillNest AI
+      </button>
+      <div class="chatbot__panel" id="chatbot-panel" hidden>
+        <div class="chatbot__header">
+          <div>
+            <strong>SkillNest AI</strong>
+            <p>Ask about trainings, workshops, and contact details.</p>
+          </div>
+          <button class="chatbot__close" type="button" aria-label="Close chatbot">Close</button>
+        </div>
+        <div class="chatbot__messages" aria-live="polite"></div>
+        <form class="chatbot__form">
+          <input class="chatbot__input" type="text" name="message" placeholder="Ask about AI training, workshops, contact..." autocomplete="off" />
+          <button class="button" type="submit">Send</button>
+        </form>
+      </div>
+    </section>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

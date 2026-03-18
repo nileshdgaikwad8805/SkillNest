@@ -1,0 +1,6 @@
+.env
+node_modules
+data/*.db
+server.out.log
+server.err.log
+.chrome-tmp

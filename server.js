@@ -965,7 +965,7 @@ async function handleAdminTestEmail(request, response) {
   }
 
   try {
-    if (!mailTransporter) {
+    if (!resendConfigured) {
       sendJson(response, 400, {
         error: "Email notifications are not configured yet. Add Resend settings to .env first.",
       });

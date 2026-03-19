@@ -2,6 +2,8 @@ const reveals = document.querySelectorAll(".reveal");
 const currentPage = document.body.dataset.page;
 const activeNav = document.querySelector(`[data-nav="${currentPage}"]`);
 const activeGroup = document.querySelector(`[data-nav-group="${currentPage}"]`);
+const navToggle = document.querySelector(".nav-toggle");
+const siteNav = document.querySelector(".site-nav");
 const contactForm = document.querySelector(".contact-card[action]");
 const contactFormFeedback = document.querySelector(".form-feedback");
 const chatbot = document.querySelector(".chatbot");
@@ -35,6 +37,38 @@ if (activeNav) {
 
 if (activeGroup) {
   activeGroup.classList.add("is-active");
+}
+
+if (navToggle && siteNav) {
+  navToggle.addEventListener("click", () => {
+    const isOpen = siteNav.classList.toggle("is-open");
+    navToggle.setAttribute("aria-expanded", String(isOpen));
+    document.body.classList.toggle("nav-open", isOpen);
+  });
+
+  siteNav.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => {
+      siteNav.classList.remove("is-open");
+      navToggle.setAttribute("aria-expanded", "false");
+      document.body.classList.remove("nav-open");
+    });
+  });
+
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    const trigger = group.querySelector('[data-nav="services"]');
+    if (!trigger) {
+      return;
+    }
+
+    trigger.addEventListener("click", (event) => {
+      if (window.innerWidth > 1024) {
+        return;
+      }
+
+      event.preventDefault();
+      group.classList.toggle("is-open");
+    });
+  });
 }
 
 if (contactForm) {

@@ -207,6 +207,15 @@ if (chatbot) {
       interest: "",
     },
   };
+  const counselorFlow = {
+    active: false,
+    step: null,
+    data: {
+      learnerType: "",
+      interest: "",
+      goal: "",
+    },
+  };
 
   const leadSteps = ["name", "contact", "learnerType", "interest"];
   const leadPrompts = {
@@ -214,6 +223,12 @@ if (chatbot) {
     contact: "How should SkillNest contact you? Share your phone number or email.",
     learnerType: "Are you a college student, fresher, early professional, or knowledge seeker?",
     interest: "Which area are you most interested in: Cloud, Data Analysis, AI, Cybersecurity, Free Workshop, or Paid Workshop?",
+  };
+  const counselorSteps = ["learnerType", "interest", "goal"];
+  const counselorPrompts = {
+    learnerType: "I can help you choose the best SkillNest path. First, are you a college student, fresher, early professional, or knowledge seeker?",
+    interest: "Which area are you most interested in right now: Cloud, Data Analysis, AI, Cybersecurity, or workshops in general?",
+    goal: "What is your main goal right now: explore a topic, build practical skills, prepare for a career start, or choose the right first step?",
   };
   const highIntentPatterns = [
     "enroll",
@@ -230,6 +245,17 @@ if (chatbot) {
     "i want to start",
     "i want to join",
     "i want to enroll",
+  ];
+  const counselorPatterns = [
+    "which course",
+    "which program",
+    "what should i start",
+    "help me choose",
+    "recommend",
+    "suggest",
+    "best path",
+    "which is best",
+    "what is best for me",
   ];
 
   const getLocalReply = async (text) => {
@@ -337,6 +363,16 @@ if (chatbot) {
     };
   };
 
+  const resetCounselorFlow = () => {
+    counselorFlow.active = false;
+    counselorFlow.step = null;
+    counselorFlow.data = {
+      learnerType: "",
+      interest: "",
+      goal: "",
+    };
+  };
+
   const startLeadCapture = () => {
     resetLeadCapture();
     leadCapture.active = true;
@@ -346,6 +382,17 @@ if (chatbot) {
       "bot"
     );
     addMessage(leadPrompts[leadCapture.step], "bot");
+  };
+
+  const startCounselorFlow = () => {
+    resetCounselorFlow();
+    counselorFlow.active = true;
+    counselorFlow.step = counselorSteps[0];
+    addMessage(
+      "I can guide you like a SkillNest counselor. I will ask 3 quick questions, then recommend the best starting path.",
+      "bot"
+    );
+    addMessage(counselorPrompts[counselorFlow.step], "bot");
   };
 
   const nextLeadStep = async () => {
@@ -401,6 +448,101 @@ if (chatbot) {
     return true;
   };
 
+  const getLocalCounselorReply = ({ learnerType, interest, goal }) => {
+    const learner = learnerType.toLowerCase();
+    const area = interest.toLowerCase();
+    const objective = goal.toLowerCase();
+
+    let recommendation = "a free workshop";
+    let reason = "because it is the easiest way to explore a domain before committing to a deeper path.";
+
+    if (
+      area.includes("ai") ||
+      area.includes("cloud") ||
+      area.includes("data") ||
+      area.includes("cyber")
+    ) {
+      if (objective.includes("career") || objective.includes("practical") || objective.includes("skills")) {
+        recommendation = `${interest} training`;
+        reason = "because you are looking for deeper practical growth, not just initial exposure.";
+      } else if (objective.includes("explore") || objective.includes("first step")) {
+        recommendation = `a ${interest} workshop`;
+        reason = "because a workshop gives you a lower-risk starting point with clearer direction.";
+      }
+    }
+
+    if (learner.includes("student") || learner.includes("fresher")) {
+      reason += " For your stage, clarity and momentum matter more than trying to learn everything at once.";
+    }
+
+    return `Based on what you shared, I recommend starting with ${recommendation} ${reason} A good next alternative would be a paid workshop if you want more guided practice before joining a full training track. If you want, continue on the Contact page or WhatsApp so SkillNest can guide you personally.`;
+  };
+
+  const completeCounselorFlow = async () => {
+    const counselorPrompt =
+      `Learner type: ${counselorFlow.data.learnerType}\n` +
+      `Interest area: ${counselorFlow.data.interest}\n` +
+      `Goal: ${counselorFlow.data.goal}\n` +
+      `Please recommend the best SkillNest starting path.`;
+
+    const history = [
+      {
+        role: "user",
+        content: counselorPrompt,
+      },
+    ];
+
+    let reply = getLocalCounselorReply(counselorFlow.data);
+
+    if (isServedOverHttp) {
+      try {
+        const response = await fetch(apiUrl("/api/chat"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sessionId: chatSessionId,
+            mode: "counselor",
+            message: counselorPrompt,
+            messages: history,
+          }),
+        });
+
+        const payload = await response.json();
+        if (!response.ok) {
+          throw new Error(payload?.error || "Counselor request failed.");
+        }
+
+        reply = payload.reply || reply;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    addMessage(reply, "bot");
+    resetCounselorFlow();
+  };
+
+  const saveCounselorAnswer = async (text) => {
+    if (!counselorFlow.active || !counselorFlow.step) {
+      return false;
+    }
+
+    counselorFlow.data[counselorFlow.step] = text;
+    const currentIndex = counselorSteps.indexOf(counselorFlow.step);
+    const nextStep = counselorSteps[currentIndex + 1];
+
+    if (!nextStep) {
+      await completeCounselorFlow();
+      return true;
+    }
+
+    counselorFlow.step = nextStep;
+    addMessage(counselorPrompts[nextStep], "bot");
+    return true;
+  };
+
   addMessage(
     isServedOverHttp
       ? "Hi, I am SkillNest AI. I can answer questions about trainings, workshops, and how to contact SkillNest."
@@ -440,9 +582,19 @@ if (chatbot) {
       return;
     }
 
+    if (counselorFlow.active) {
+      saveCounselorAnswer(text);
+      return;
+    }
+
     const lower = text.toLowerCase();
     if (highIntentPatterns.some((pattern) => lower.includes(pattern))) {
       startLeadCapture();
+      return;
+    }
+
+    if (counselorPatterns.some((pattern) => lower.includes(pattern))) {
+      startCounselorFlow();
       return;
     }
 

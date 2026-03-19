@@ -1095,6 +1095,23 @@ a {
   gap: 12px;
 }
 
+.admin-ai-output {
+  margin-top: 18px;
+  padding: 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(29, 31, 29, 0.08);
+}
+
+.admin-ai-output pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  line-height: 1.7;
+  color: var(--text);
+}
+
 .admin-item {
   padding: 16px;
   border-radius: 16px;

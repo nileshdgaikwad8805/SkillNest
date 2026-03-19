@@ -166,6 +166,56 @@
           </article>
         </section>
 
+        <section class="section">
+          <article class="admin-card reveal">
+            <div class="admin-card__header">
+              <h2>AI Content Generator</h2>
+            </div>
+            <form class="contact-card" id="admin-ai-content-form">
+              <label>
+                Content Format
+                <select name="format" required>
+                  <option value="">Choose a format</option>
+                  <option value="workshop_description">Workshop Description</option>
+                  <option value="announcement">Announcement</option>
+                  <option value="social_post">Social Post Drafts</option>
+                </select>
+              </label>
+              <label>
+                Topic
+                <input type="text" name="topic" placeholder="AI Workshop for Freshers" required />
+              </label>
+              <label>
+                Audience
+                <input type="text" name="audience" placeholder="College students and freshers" required />
+              </label>
+              <label>
+                Goal
+                <textarea name="goal" rows="3" placeholder="Promote a beginner-friendly AI workshop and drive inquiries." required></textarea>
+              </label>
+              <label>
+                Tone
+                <select name="tone" required>
+                  <option value="professional">Professional</option>
+                  <option value="friendly">Friendly</option>
+                  <option value="premium">Premium</option>
+                </select>
+              </label>
+              <div class="admin-toolbar">
+                <button type="submit" class="button">Generate with AI</button>
+              </div>
+              <p class="form-feedback" id="admin-ai-feedback" hidden></p>
+            </form>
+            <div class="admin-ai-output" id="admin-ai-output" hidden>
+              <div class="admin-card__header">
+                <h3>Generated Draft</h3>
+                <button class="button button--secondary" id="admin-ai-copy" type="button">Copy Draft</button>
+              </div>
+              <pre id="admin-ai-output-text"></pre>
+            </div>
+          </article>
+        </section>
+
         <section class="section admin-grid">
           <article class="admin-card reveal">
             <div class="admin-card__header">

@@ -520,6 +520,33 @@ async function notifyLeadSaved({ name, contact, learnerType, interest, leadId, s
   }
 }
 
+async function callGemini({ instructions, contents }) {
+  const geminiResponse = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY,
+      },
+      body: JSON.stringify({
+        systemInstruction: {
+          parts: [{ text: instructions }],
+        },
+        contents,
+      }),
+    }
+  );
+
+  const payload = await geminiResponse.json();
+
+  if (!geminiResponse.ok) {
+    throw new Error(payload?.error?.message || "Gemini request failed.");
+  }
+
+  return extractGeminiText(payload) || "";
+}
+
 async function handleChat(request, response) {
   try {
     if (!GEMINI_API_KEY) {
@@ -534,23 +561,35 @@ async function handleChat(request, response) {
     const sessionId = String(body.sessionId || "anonymous").trim();
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const latestUserMessage = String(body.message || "").trim();
+    const chatMode = String(body.mode || "default").trim().toLowerCase();
 
     if (!messages.length || !latestUserMessage) {
       sendJson(response, 400, { error: "A session, history, and latest message are required." });
       return;
     }
 
-    const instructions =
+    const baseInstructions =
       "You are SkillNest AI, the admissions and learner guidance assistant for SkillNest in Pune, Maharashtra. " +
       "SkillNest offers Cloud, Data Analysis, AI, and Cybersecurity trainings plus free and paid workshops. " +
       "Primary audience: college students, freshers, early professionals, and knowledge seekers. " +
-      "Your job is to guide visitors toward the right training or workshop, answer clearly, and help convert interest into inquiry. " +
-      "Keep replies concise, warm, and practical. " +
-      "When a user seems unsure, recommend the best starting option based on their stage. " +
-      "When a user shows buying intent, wants to enroll, asks for dates, fees, next batch, or deeper details not present in site context, tell them to contact SkillNest directly at phone 9284543320, email nileshdgaikwad8805@gmail.com, or WhatsApp. " +
-      "Do not invent prices, schedules, certifications, or promises that are not provided. " +
+      "Keep replies concise, warm, practical, and conversion-aware. " +
+      "Do not invent prices, schedules, certifications, job guarantees, or promises that are not provided. " +
       "If asked for location, say SkillNest is based in Pune, Maharashtra. " +
       "If asked who SkillNest is for, mention college students, freshers, early professionals, and knowledge seekers. " +
+      "When a user shows buying intent, wants to enroll, asks for dates, fees, next batch, or deeper details not present in site context, tell them to contact SkillNest directly at phone 9284543320, email nileshdgaikwad8805@gmail.com, or WhatsApp.";
+
+    const counselorInstructions =
+      baseInstructions +
+      " You are acting as a smart counselor. " +
+      "Read the learner profile in the conversation carefully and recommend the single best starting path. " +
+      "Use the learner's stage, interest area, and goal to choose between a free workshop, paid workshop, or full training track. " +
+      "Briefly explain why that recommendation fits them, then mention one logical next alternative. " +
+      "End with a soft next step toward Contact or WhatsApp.";
+
+    const defaultInstructions =
+      baseInstructions +
+      " Your job is to guide visitors toward the right training or workshop, answer clearly, and help convert interest into inquiry. " +
+      "When a user seems unsure, recommend the best starting option based on their stage. " +
       "End high-intent replies with a soft call to action such as inviting the learner to use Contact or WhatsApp.";
 
     const contents = messages.map((message) => ({
@@ -558,33 +597,11 @@ async function handleChat(request, response) {
       parts: [{ text: String(message.content || "") }],
     }));
 
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: instructions }],
-          },
-          contents,
-        }),
-      }
-    );
-
-    const payload = await geminiResponse.json();
-
-    if (!geminiResponse.ok) {
-      sendJson(response, geminiResponse.status, {
-        error: payload?.error?.message || "Gemini request failed.",
-      });
-      return;
-    }
-
-    const reply = extractGeminiText(payload) || "I could not generate a reply right now. Please try again.";
+    const reply =
+      (await callGemini({
+        instructions: chatMode === "counselor" ? counselorInstructions : defaultInstructions,
+        contents,
+      })) || "I could not generate a reply right now. Please try again.";
 
     insertChatMessage.run(sessionId, "user", latestUserMessage);
     insertChatMessage.run(sessionId, "assistant", reply);
@@ -596,6 +613,69 @@ async function handleChat(request, response) {
   } catch (error) {
     sendJson(response, 500, {
       error: error instanceof Error ? error.message : "Unexpected server error.",
+    });
+  }
+}
+
+async function handleAdminAiContent(request, response) {
+  const session = requireAdmin(request, response);
+  if (!session) {
+    return;
+  }
+
+  try {
+    if (!GEMINI_API_KEY) {
+      sendJson(response, 500, { error: "GEMINI_API_KEY is not configured." });
+      return;
+    }
+
+    const body = await parseJsonBody(request);
+    const format = String(body.format || "").trim();
+    const topic = String(body.topic || "").trim();
+    const audience = String(body.audience || "").trim();
+    const goal = String(body.goal || "").trim();
+    const tone = String(body.tone || "professional").trim();
+
+    if (!format || !topic || !audience || !goal) {
+      sendJson(response, 400, { error: "Format, topic, audience, and goal are required." });
+      return;
+    }
+
+    const instructions =
+      "You are SkillNest's internal AI content assistant for admins. " +
+      "Generate polished marketing content for a training brand in Pune offering Cloud, Data Analysis, AI, Cybersecurity, and workshop-based learning. " +
+      "Write in a premium, practical, human tone. " +
+      "Keep the output ready to use, specific, and clear. " +
+      "Do not invent dates, fees, workshop seats, certifications, outcomes, or client names that were not provided. " +
+      "If needed, use placeholders like [add date] or [add venue]. " +
+      "Return only the requested content, with light formatting. " +
+      "If format is workshop_description, produce a title, short intro, 4 bullet highlights, who it is for, and a CTA. " +
+      "If format is announcement, produce a short promotional announcement suitable for website or WhatsApp broadcast. " +
+      "If format is social_post, produce 3 distinct social post drafts with short captions and CTA lines.";
+
+    const prompt =
+      `Format: ${format}\n` +
+      `Topic: ${topic}\n` +
+      `Audience: ${audience}\n` +
+      `Goal: ${goal}\n` +
+      `Tone: ${tone}\n` +
+      `Brand message: Knowledge is the power.\n` +
+      `Location: Pune, Maharashtra.\n`;
+
+    const output = await callGemini({
+      instructions,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ],
+    });
+
+    sendJson(response, 200, { success: true, output });
+  } catch (error) {
+    sendJson(response, 500, {
+      error: error instanceof Error ? error.message : "Unable to generate AI content.",
     });
   }
 }
@@ -1084,6 +1164,11 @@ const server = http.createServer((request, response) => {
 
   if (request.method === "POST" && requestUrl.pathname === "/api/admin/test-email") {
     handleAdminTestEmail(request, response);
+    return;
+  }
+
+  if (request.method === "POST" && requestUrl.pathname === "/api/admin/ai-content") {
+    handleAdminAiContent(request, response);
     return;
   }
 

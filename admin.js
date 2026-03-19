@@ -4,6 +4,10 @@ const chatCount = document.querySelector("#admin-chats");
 const inquiryList = document.querySelector("#admin-inquiry-list");
 const leadList = document.querySelector("#admin-lead-list");
 const chatList = document.querySelector("#admin-chat-list");
+const aiContentForm = document.querySelector("#admin-ai-content-form");
+const aiContentFeedback = document.querySelector("#admin-ai-feedback");
+const aiContentOutput = document.querySelector("#admin-ai-output");
+const aiContentOutputText = document.querySelector("#admin-ai-output-text");
 const refreshButtons = document.querySelectorAll(".admin-refresh");
 const adminTokenKey = "skillnest_admin_token";
 const apiBase = String(window.SKILLNEST_CONFIG?.apiBase || "").replace(/\/$/, "");
@@ -261,6 +265,73 @@ function attachWorkshopActions() {
   });
 }
 
+function attachAiContentGenerator() {
+  if (!aiContentForm || !aiContentFeedback || !aiContentOutput || !aiContentOutputText) {
+    return;
+  }
+
+  aiContentForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    aiContentFeedback.hidden = true;
+    aiContentFeedback.textContent = "";
+    aiContentOutput.hidden = true;
+    aiContentOutputText.textContent = "";
+
+    const formData = new FormData(aiContentForm);
+    const payload = {
+      format: String(formData.get("format") || "").trim(),
+      topic: String(formData.get("topic") || "").trim(),
+      audience: String(formData.get("audience") || "").trim(),
+      goal: String(formData.get("goal") || "").trim(),
+      tone: String(formData.get("tone") || "").trim(),
+    };
+
+    try {
+      const response = await fetch(apiUrl("/api/admin/ai-content"), {
+        method: "POST",
+        headers: getAuthHeaders(true),
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(result?.error || "Unable to generate AI content.");
+      }
+
+      aiContentOutput.hidden = false;
+      aiContentOutputText.textContent = result.output || "";
+      aiContentFeedback.hidden = false;
+      aiContentFeedback.textContent = "AI draft generated successfully.";
+    } catch (error) {
+      aiContentFeedback.hidden = false;
+      aiContentFeedback.textContent =
+        error instanceof Error ? error.message : "Unable to generate AI content.";
+    }
+  });
+
+  document.querySelector("#admin-ai-copy")?.addEventListener("click", async () => {
+    const text = aiContentOutputText?.textContent || "";
+    if (!text) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      aiContentFeedback.hidden = false;
+      aiContentFeedback.textContent = "Generated draft copied to clipboard.";
+    } catch (error) {
+      aiContentFeedback.hidden = false;
+      aiContentFeedback.textContent = "Unable to copy draft automatically.";
+    }
+  });
+}
+
 function attachDocumentActions() {
   document.addEventListener("click", async (event) => {
     const target = event.target;
@@ -495,5 +566,6 @@ refreshButtons.forEach((button) => {
 attachAdminControls();
 attachPasswordChange();
 attachWorkshopActions();
+attachAiContentGenerator();
 attachDocumentActions();
 loadAdminOverview();

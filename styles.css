@@ -485,6 +485,18 @@ a {
   max-width: 820px;
 }
 
+.page-hero--split {
+  max-width: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.82fr);
+  gap: 26px;
+  align-items: end;
+}
+
+.page-hero__content {
+  max-width: 820px;
+}
+
 .page-hero h1 {
   margin: 10px 0 16px;
   font-family: "Sora", sans-serif;
@@ -497,6 +509,68 @@ a {
   color: var(--muted);
   font-size: 1.05rem;
   line-height: 1.75;
+}
+
+.page-hero__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.page-hero__chips span,
+.page-hero__panel {
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  backdrop-filter: blur(12px);
+}
+
+.page-hero__chips span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 252, 248, 0.72);
+  box-shadow: 0 12px 24px rgba(95, 69, 42, 0.08);
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.page-hero__panel {
+  padding: 24px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(66, 173, 164, 0.18), transparent 48%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 245, 232, 0.96));
+  box-shadow: var(--shadow-soft);
+}
+
+.page-hero__panel-label {
+  margin: 0 0 10px;
+  color: var(--accent-deep);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.page-hero__panel strong {
+  display: block;
+  margin-bottom: 14px;
+  font-family: "Sora", sans-serif;
+  font-size: 1.2rem;
+  line-height: 1.45;
+  letter-spacing: -0.02em;
+}
+
+.page-hero__list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+  line-height: 1.7;
 }
 
 .partners {
@@ -1091,7 +1165,8 @@ a {
   .hero,
   .spotlight,
   .leadership,
-  .cta {
+  .cta,
+  .page-hero--split {
     grid-template-columns: 1fr;
   }
 
@@ -1172,6 +1247,14 @@ a {
   .hero__proof-line {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .page-hero {
+    padding-top: 48px;
+  }
+
+  .page-hero__panel {
+    padding: 22px;
   }
 
   .nav-group {

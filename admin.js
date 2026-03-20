@@ -55,6 +55,13 @@ function escapeAttribute(value) {
     .replace(/>/g, "&gt;");
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function attachAdminControls() {
   document.querySelector("#admin-logout")?.addEventListener("click", async () => {
     await fetch(apiUrl("/api/admin/logout"), {
@@ -473,6 +480,14 @@ async function loadAdminOverview() {
         <p>${item.email}</p>
         <p>${item.interest}</p>
         <p>${item.message}</p>
+        ${
+          item.ai_summary || item.ai_next_step
+            ? `<div class="admin-ai-snippet">
+                <p><strong>AI Summary:</strong> ${escapeHtml(item.ai_summary)}</p>
+                <p><strong>AI Next Step:</strong> ${escapeHtml(item.ai_next_step)}</p>
+              </div>`
+            : ""
+        }
         <span>${item.created_at}</span>
       </article>
     `);
@@ -499,6 +514,14 @@ async function loadAdminOverview() {
           Notes
           <textarea rows="3" data-lead-notes placeholder="Add follow-up notes">${item.notes || ""}</textarea>
         </label>
+        ${
+          item.ai_summary || item.ai_next_step
+            ? `<div class="admin-ai-snippet">
+                <p><strong>AI Summary:</strong> ${escapeHtml(item.ai_summary)}</p>
+                <p><strong>AI Next Step:</strong> ${escapeHtml(item.ai_next_step)}</p>
+              </div>`
+            : ""
+        }
         <div class="admin-actions">
           <button
             type="button"
@@ -527,6 +550,16 @@ async function loadAdminOverview() {
         <p>${item.type}</p>
         <p>${item.schedule_text} | ${item.duration_text} | ${item.level_text}</p>
         <p>${item.description}</p>
+        ${
+          item.ai_workshop_description || item.ai_announcement || item.ai_social_posts
+            ? `<div class="admin-ai-snippet">
+                <p><strong>AI Description:</strong> ${escapeHtml(item.ai_workshop_description)}</p>
+                <p><strong>AI Announcement:</strong> ${escapeHtml(item.ai_announcement)}</p>
+                <p><strong>AI Social Drafts:</strong></p>
+                <pre>${escapeHtml(item.ai_social_posts)}</pre>
+              </div>`
+            : ""
+        }
         <span>${item.is_active ? "Active" : "Inactive"}</span>
         <div class="admin-actions">
           <button

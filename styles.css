@@ -1112,6 +1112,32 @@ a {
   color: var(--text);
 }
 
+.admin-ai-snippet {
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(15, 109, 106, 0.08);
+  border: 1px solid rgba(15, 109, 106, 0.12);
+}
+
+.admin-ai-snippet p,
+.admin-ai-snippet pre {
+  margin: 0 0 10px;
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.admin-ai-snippet p:last-child,
+.admin-ai-snippet pre:last-child {
+  margin-bottom: 0;
+}
+
+.admin-ai-snippet pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+}
+
 .admin-item {
   padding: 16px;
   border-radius: 16px;

@@ -80,6 +80,8 @@ db.exec(`
     interest TEXT NOT NULL,
     message TEXT NOT NULL,
     source TEXT NOT NULL DEFAULT 'contact_form',
+    ai_summary TEXT NOT NULL DEFAULT '',
+    ai_next_step TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -92,6 +94,8 @@ db.exec(`
     interest TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'new',
     notes TEXT NOT NULL DEFAULT '',
+    ai_summary TEXT NOT NULL DEFAULT '',
+    ai_next_step TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -113,6 +117,9 @@ db.exec(`
     level_text TEXT NOT NULL,
     cta_text TEXT NOT NULL,
     cta_link TEXT NOT NULL,
+    ai_workshop_description TEXT NOT NULL DEFAULT '',
+    ai_announcement TEXT NOT NULL DEFAULT '',
+    ai_social_posts TEXT NOT NULL DEFAULT '',
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -138,16 +145,36 @@ function ensureColumn(tableName, columnName, columnDefinition) {
 ensureColumn("chatbot_leads", "status", "TEXT NOT NULL DEFAULT 'new'");
 ensureColumn("chatbot_leads", "notes", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("chatbot_leads", "updated_at", "TEXT");
+ensureColumn("chatbot_leads", "ai_summary", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("chatbot_leads", "ai_next_step", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("contact_inquiries", "ai_summary", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("contact_inquiries", "ai_next_step", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("workshops", "ai_workshop_description", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("workshops", "ai_announcement", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("workshops", "ai_social_posts", "TEXT NOT NULL DEFAULT ''");
 db.exec(`
   UPDATE chatbot_leads
   SET updated_at = COALESCE(updated_at, created_at),
       status = COALESCE(status, 'new'),
-      notes = COALESCE(notes, '')
+      notes = COALESCE(notes, ''),
+      ai_summary = COALESCE(ai_summary, ''),
+      ai_next_step = COALESCE(ai_next_step, '')
+`);
+db.exec(`
+  UPDATE contact_inquiries
+  SET ai_summary = COALESCE(ai_summary, ''),
+      ai_next_step = COALESCE(ai_next_step, '')
+`);
+db.exec(`
+  UPDATE workshops
+  SET ai_workshop_description = COALESCE(ai_workshop_description, ''),
+      ai_announcement = COALESCE(ai_announcement, ''),
+      ai_social_posts = COALESCE(ai_social_posts, '')
 `);
 
 const insertInquiry = db.prepare(`
-  INSERT INTO contact_inquiries (name, email, organization, interest, message, source)
-  VALUES (?, ?, ?, ?, ?, ?)
+  INSERT INTO contact_inquiries (name, email, organization, interest, message, source, ai_summary, ai_next_step)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const selectAdminUser = db.prepare(`
   SELECT id, username, password_hash, created_at, updated_at
@@ -165,8 +192,8 @@ const updateAdminPassword = db.prepare(`
   WHERE id = ?
 `);
 const insertLead = db.prepare(`
-  INSERT INTO chatbot_leads (session_id, name, contact, learner_type, interest, status, notes)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO chatbot_leads (session_id, name, contact, learner_type, interest, status, notes, ai_summary, ai_next_step)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const insertChatMessage = db.prepare(`
   INSERT INTO chat_messages (session_id, role, content)
@@ -177,13 +204,13 @@ const selectLeadCount = db.prepare(`SELECT COUNT(*) AS count FROM chatbot_leads`
 const selectChatCount = db.prepare(`SELECT COUNT(*) AS count FROM chat_messages`);
 const selectWorkshopCount = db.prepare(`SELECT COUNT(*) AS count FROM workshops`);
 const selectRecentInquiries = db.prepare(`
-  SELECT id, name, email, organization, interest, message, source, created_at
+  SELECT id, name, email, organization, interest, message, source, ai_summary, ai_next_step, created_at
   FROM contact_inquiries
   ORDER BY id DESC
   LIMIT 20
 `);
 const selectRecentLeads = db.prepare(`
-  SELECT id, session_id, name, contact, learner_type, interest, status, notes, created_at, updated_at
+  SELECT id, session_id, name, contact, learner_type, interest, status, notes, ai_summary, ai_next_step, created_at, updated_at
   FROM chatbot_leads
   ORDER BY id DESC
   LIMIT 20
@@ -195,7 +222,7 @@ const selectRecentChats = db.prepare(`
   LIMIT 30
 `);
 const selectWorkshops = db.prepare(`
-  SELECT id, title, type, description, schedule_text, duration_text, level_text, cta_text, cta_link, is_active, created_at, updated_at
+  SELECT id, title, type, description, schedule_text, duration_text, level_text, cta_text, cta_link, ai_workshop_description, ai_announcement, ai_social_posts, is_active, created_at, updated_at
   FROM workshops
   ORDER BY id DESC
 `);
@@ -206,12 +233,17 @@ const selectPublicWorkshops = db.prepare(`
   ORDER BY id DESC
 `);
 const insertWorkshop = db.prepare(`
-  INSERT INTO workshops (title, type, description, schedule_text, duration_text, level_text, cta_text, cta_link, is_active)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO workshops (title, type, description, schedule_text, duration_text, level_text, cta_text, cta_link, ai_workshop_description, ai_announcement, ai_social_posts, is_active)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const updateWorkshop = db.prepare(`
   UPDATE workshops
-  SET title = ?, type = ?, description = ?, schedule_text = ?, duration_text = ?, level_text = ?, cta_text = ?, cta_link = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+  SET title = ?, type = ?, description = ?, schedule_text = ?, duration_text = ?, level_text = ?, cta_text = ?, cta_link = ?, ai_workshop_description = ?, ai_announcement = ?, ai_social_posts = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP
+  WHERE id = ?
+`);
+const selectWorkshopById = db.prepare(`
+  SELECT id, title, type, description, schedule_text, duration_text, level_text, cta_text, cta_link, is_active
+  FROM workshops
   WHERE id = ?
 `);
 const deleteWorkshop = db.prepare(`DELETE FROM workshops WHERE id = ?`);
@@ -245,6 +277,9 @@ function seedWorkshopsIfNeeded() {
       "Beginner",
       "Reserve Seat",
       "contact.html",
+      "",
+      "",
+      "",
       1,
     ],
     [
@@ -256,6 +291,9 @@ function seedWorkshopsIfNeeded() {
       "Beginner to Intermediate",
       "Enroll Now",
       "contact.html",
+      "",
+      "",
+      "",
       1,
     ],
     [
@@ -267,6 +305,9 @@ function seedWorkshopsIfNeeded() {
       "Beginner",
       "Reserve Seat",
       "contact.html",
+      "",
+      "",
+      "",
       1,
     ],
     [
@@ -278,6 +319,9 @@ function seedWorkshopsIfNeeded() {
       "Beginner",
       "Enroll Now",
       "contact.html",
+      "",
+      "",
+      "",
       1,
     ],
   ];
@@ -466,7 +510,7 @@ async function sendNotificationEmail({ subject, text, html }) {
   return true;
 }
 
-async function notifyInquirySaved({ name, email, organization, interest, message, source, inquiryId }) {
+async function notifyInquirySaved({ name, email, organization, interest, message, source, inquiryId, aiSummary, aiNextStep }) {
   try {
     await sendNotificationEmail({
       subject: `SkillNest inquiry #${inquiryId}: ${interest}`,
@@ -478,6 +522,8 @@ async function notifyInquirySaved({ name, email, organization, interest, message
         `Organization: ${organization || "Not provided"}\n` +
         `Interest: ${interest}\n` +
         `Source: ${source}\n\n` +
+        `AI Summary: ${aiSummary || "Not generated"}\n` +
+        `AI Next Step: ${aiNextStep || "Not generated"}\n\n` +
         `Message:\n${message}`,
       html:
         `<h2>New SkillNest inquiry</h2>` +
@@ -487,6 +533,8 @@ async function notifyInquirySaved({ name, email, organization, interest, message
         `<p><strong>Organization:</strong> ${organization || "Not provided"}</p>` +
         `<p><strong>Interest:</strong> ${interest}</p>` +
         `<p><strong>Source:</strong> ${source}</p>` +
+        `<p><strong>AI Summary:</strong> ${aiSummary || "Not generated"}</p>` +
+        `<p><strong>AI Next Step:</strong> ${aiNextStep || "Not generated"}</p>` +
         `<p><strong>Message:</strong><br>${message.replace(/\n/g, "<br>")}</p>`,
     });
   } catch (error) {
@@ -494,7 +542,7 @@ async function notifyInquirySaved({ name, email, organization, interest, message
   }
 }
 
-async function notifyLeadSaved({ name, contact, learnerType, interest, leadId, status }) {
+async function notifyLeadSaved({ name, contact, learnerType, interest, leadId, status, aiSummary, aiNextStep }) {
   try {
     await sendNotificationEmail({
       subject: `SkillNest chatbot lead #${leadId}: ${interest}`,
@@ -505,7 +553,9 @@ async function notifyLeadSaved({ name, contact, learnerType, interest, leadId, s
         `Contact: ${contact}\n` +
         `Learner Type: ${learnerType}\n` +
         `Interest: ${interest}\n` +
-        `Status: ${status}`,
+        `Status: ${status}\n` +
+        `AI Summary: ${aiSummary || "Not generated"}\n` +
+        `AI Next Step: ${aiNextStep || "Not generated"}`,
       html:
         `<h2>New SkillNest chatbot lead</h2>` +
         `<p><strong>Lead ID:</strong> ${leadId}</p>` +
@@ -513,7 +563,9 @@ async function notifyLeadSaved({ name, contact, learnerType, interest, leadId, s
         `<p><strong>Contact:</strong> ${contact}</p>` +
         `<p><strong>Learner Type:</strong> ${learnerType}</p>` +
         `<p><strong>Interest:</strong> ${interest}</p>` +
-        `<p><strong>Status:</strong> ${status}</p>`,
+        `<p><strong>Status:</strong> ${status}</p>` +
+        `<p><strong>AI Summary:</strong> ${aiSummary || "Not generated"}</p>` +
+        `<p><strong>AI Next Step:</strong> ${aiNextStep || "Not generated"}</p>`,
     });
   } catch (error) {
     console.error("Lead notification failed:", error);
@@ -545,6 +597,126 @@ async function callGemini({ instructions, contents }) {
   }
 
   return extractGeminiText(payload) || "";
+}
+
+async function generateInquiryAutomation({ name, organization, interest, message }) {
+  if (!GEMINI_API_KEY) {
+    return { aiSummary: "", aiNextStep: "" };
+  }
+
+  const output = await callGemini({
+    instructions:
+      "You are SkillNest's internal AI intake assistant. " +
+      "Summarize incoming inquiries for admins. " +
+      "Return exactly two lines in this format: SUMMARY: ... and NEXT_STEP: ... " +
+      "Keep each line concise, practical, and actionable. " +
+      "Do not invent details.",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text:
+              `Name: ${name}\n` +
+              `Organization: ${organization || "Not provided"}\n` +
+              `Interest: ${interest}\n` +
+              `Message: ${message}\n`,
+          },
+        ],
+      },
+    ],
+  });
+
+  const summaryMatch = output.match(/SUMMARY:\s*(.+)/i);
+  const nextStepMatch = output.match(/NEXT_STEP:\s*(.+)/i);
+
+  return {
+    aiSummary: summaryMatch?.[1]?.trim() || "",
+    aiNextStep: nextStepMatch?.[1]?.trim() || "",
+  };
+}
+
+async function generateLeadAutomation({ name, learnerType, interest, contact }) {
+  if (!GEMINI_API_KEY) {
+    return { aiSummary: "", aiNextStep: "" };
+  }
+
+  const output = await callGemini({
+    instructions:
+      "You are SkillNest's internal AI lead triage assistant. " +
+      "Summarize a lead and recommend the best next step for the SkillNest team. " +
+      "Return exactly two lines in this format: SUMMARY: ... and NEXT_STEP: ... " +
+      "Keep the advice actionable and short. " +
+      "Do not invent fees, dates, or commitments.",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text:
+              `Name: ${name}\n` +
+              `Learner type: ${learnerType}\n` +
+              `Interest: ${interest}\n` +
+              `Contact: ${contact}\n`,
+          },
+        ],
+      },
+    ],
+  });
+
+  const summaryMatch = output.match(/SUMMARY:\s*(.+)/i);
+  const nextStepMatch = output.match(/NEXT_STEP:\s*(.+)/i);
+
+  return {
+    aiSummary: summaryMatch?.[1]?.trim() || "",
+    aiNextStep: nextStepMatch?.[1]?.trim() || "",
+  };
+}
+
+async function generateWorkshopAutomation({ title, type, description, scheduleText, durationText, levelText }) {
+  if (!GEMINI_API_KEY) {
+    return {
+      aiWorkshopDescription: "",
+      aiAnnouncement: "",
+      aiSocialPosts: "",
+    };
+  }
+
+  const output = await callGemini({
+    instructions:
+      "You are SkillNest's internal AI marketing assistant. " +
+      "Create ready-to-use marketing assets for a workshop. " +
+      "Return exactly these sections: WORKSHOP_DESCRIPTION:, ANNOUNCEMENT:, SOCIAL_POSTS:. " +
+      "Keep it polished and practical. " +
+      "Do not invent prices, venues, or extra details not provided.",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text:
+              `Title: ${title}\n` +
+              `Type: ${type}\n` +
+              `Description: ${description}\n` +
+              `Schedule: ${scheduleText}\n` +
+              `Duration: ${durationText}\n` +
+              `Level: ${levelText}\n` +
+              `Brand: SkillNest, Pune, Maharashtra. Knowledge is the power.\n`,
+          },
+        ],
+      },
+    ],
+  });
+
+  const descriptionMatch = output.match(/WORKSHOP_DESCRIPTION:\s*([\s\S]*?)ANNOUNCEMENT:/i);
+  const announcementMatch = output.match(/ANNOUNCEMENT:\s*([\s\S]*?)SOCIAL_POSTS:/i);
+  const socialMatch = output.match(/SOCIAL_POSTS:\s*([\s\S]*)$/i);
+
+  return {
+    aiWorkshopDescription: descriptionMatch?.[1]?.trim() || "",
+    aiAnnouncement: announcementMatch?.[1]?.trim() || "",
+    aiSocialPosts: socialMatch?.[1]?.trim() || "",
+  };
 }
 
 async function handleChat(request, response) {
@@ -697,7 +869,14 @@ async function handleContactInquiry(request, response) {
       return;
     }
 
-    const result = insertInquiry.run(name, email, organization, interest, message, source);
+    const { aiSummary, aiNextStep } = await generateInquiryAutomation({
+      name,
+      organization,
+      interest,
+      message,
+    });
+
+    const result = insertInquiry.run(name, email, organization, interest, message, source, aiSummary, aiNextStep);
     const inquiryId = Number(result.lastInsertRowid);
 
     await notifyInquirySaved({
@@ -708,6 +887,8 @@ async function handleContactInquiry(request, response) {
       message,
       source,
       inquiryId,
+      aiSummary,
+      aiNextStep,
     });
 
     sendJson(response, 201, {
@@ -739,7 +920,14 @@ async function handleLeadCapture(request, response) {
       return;
     }
 
-    const result = insertLead.run(sessionId, name, contact, learnerType, interest, status, notes);
+    const { aiSummary, aiNextStep } = await generateLeadAutomation({
+      name,
+      learnerType,
+      interest,
+      contact,
+    });
+
+    const result = insertLead.run(sessionId, name, contact, learnerType, interest, status, notes, aiSummary, aiNextStep);
     const leadId = Number(result.lastInsertRowid);
 
     await notifyLeadSaved({
@@ -749,6 +937,8 @@ async function handleLeadCapture(request, response) {
       interest,
       leadId,
       status,
+      aiSummary,
+      aiNextStep,
     });
 
     sendJson(response, 201, {
@@ -933,6 +1123,15 @@ async function handleAdminWorkshopCreate(request, response) {
       return;
     }
 
+    const aiAssets = await generateWorkshopAutomation({
+      title,
+      type,
+      description,
+      scheduleText,
+      durationText,
+      levelText,
+    });
+
     const result = insertWorkshop.run(
       title,
       type,
@@ -942,6 +1141,9 @@ async function handleAdminWorkshopCreate(request, response) {
       levelText,
       ctaText,
       ctaLink,
+      aiAssets.aiWorkshopDescription,
+      aiAssets.aiAnnouncement,
+      aiAssets.aiSocialPosts,
       isActive
     );
 
@@ -978,6 +1180,21 @@ async function handleAdminWorkshopUpdate(request, response, workshopId) {
       return;
     }
 
+    const existingWorkshop = selectWorkshopById.get(workshopId);
+    if (!existingWorkshop) {
+      sendJson(response, 404, { error: "Workshop not found." });
+      return;
+    }
+
+    const aiAssets = await generateWorkshopAutomation({
+      title,
+      type,
+      description,
+      scheduleText,
+      durationText,
+      levelText,
+    });
+
     updateWorkshop.run(
       title,
       type,
@@ -987,6 +1204,9 @@ async function handleAdminWorkshopUpdate(request, response, workshopId) {
       levelText,
       ctaText,
       ctaLink,
+      aiAssets.aiWorkshopDescription,
+      aiAssets.aiAnnouncement,
+      aiAssets.aiSocialPosts,
       isActive,
       workshopId
     );

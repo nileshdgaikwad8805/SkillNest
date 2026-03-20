@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkillNest | Learner Dashboard</title>
+    <meta
+      name="description"
+      content="Learner dashboard for SkillNest enrollments, onboarding, and next steps."
+    />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand-mark" href="index.html">
+          <span class="brand-mark__icon"><img src="logo-mark.svg" alt="SkillNest logo" /></span>
+          <span class="brand-mark__text">
+            <span class="brand-mark__name">SkillNest</span>
+            <span class="brand-mark__tag">Knowledge is the power.</span>
+          </span>
+        </a>
+        <a class="button button--ghost" href="enroll.html">New Enrollment</a>
+      </header>
+
+      <main>
+        <section class="page-hero reveal">
+          <p class="eyebrow">Learner Dashboard</p>
+          <h1>Your onboarding, next steps, and workshop access in one place.</h1>
+          <p id="learner-dashboard-intro">Loading your SkillNest enrollment...</p>
+        </section>
+
+        <section class="section">
+          <div class="dashboard-grid">
+            <article class="enterprise-card reveal" id="learner-summary-card">
+              <p class="story-card__label">Enrollment Summary</p>
+              <h3>Waiting for learner details</h3>
+              <p>Your dashboard will show product, status, and onboarding state here.</p>
+            </article>
+            <article class="enterprise-card reveal">
+              <p class="story-card__label">Next Actions</p>
+              <h3>What you should do now</h3>
+              <ul class="page-hero__list">
+                <li>Check your email for onboarding details</li>
+                <li>Save the learner dashboard link</li>
+                <li>Contact SkillNest on WhatsApp for quick help</li>
+              </ul>
+            </article>
+            <article class="enterprise-card reveal">
+              <p class="story-card__label">Support</p>
+              <h3>Need guidance before your workshop?</h3>
+              <p>Use WhatsApp, email, or the SkillNest AI chatbot to get direction before you begin.</p>
+              <a class="button button--secondary" href="contact.html">Talk to SkillNest</a>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="config.js"></script>
+    <script src="learner-dashboard.js"></script>
+  </body>
+</html>

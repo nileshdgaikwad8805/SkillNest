@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkillNest | Enroll</title>
+    <meta
+      name="description"
+      content="Enroll in SkillNest free community workshops and paid workshops with automated onboarding."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-page="contact">
+    <div class="page-shell">
+      <header class="site-header">
+        <a class="brand-mark" href="index.html">
+          <span class="brand-mark__icon"><img src="logo-mark.svg" alt="SkillNest logo" /></span>
+          <span class="brand-mark__text">
+            <span class="brand-mark__name">SkillNest</span>
+            <span class="brand-mark__tag">Knowledge is the power.</span>
+          </span>
+        </a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <nav class="site-nav" id="site-nav">
+          <a href="index.html" data-nav="home">Home</a>
+          <a href="about.html" data-nav="about">About</a>
+          <div class="nav-group" data-nav-group="services">
+            <a href="services.html" data-nav="services">Services</a>
+            <div class="nav-dropdown">
+              <a href="services.html">All Services</a>
+              <a href="corporate-training.html">Corporate Training</a>
+              <a href="certifications.html">Certifications</a>
+            </div>
+          </div>
+          <a href="programs.html" data-nav="programs">Programs</a>
+          <a href="workshops.html" data-nav="workshops">Workshops</a>
+          <a href="contact.html" data-nav="contact">Contact</a>
+        </nav>
+        <a class="button button--ghost" href="learner-dashboard.html">Learner Dashboard</a>
+      </header>
+
+      <main>
+        <section class="page-hero page-hero--split reveal">
+          <div class="page-hero__content">
+            <p class="eyebrow">Enroll With SkillNest</p>
+            <h1>Choose a free or paid workshop and let the system onboard you automatically.</h1>
+            <p>
+              SkillNest now supports direct enrollment, payment-ready workshop
+              checkout, automated onboarding, and learner dashboard access.
+            </p>
+            <div class="page-hero__chips">
+              <span>Free community workshop</span>
+              <span>Paid workshop checkout</span>
+              <span>Auto onboarding</span>
+            </div>
+          </div>
+          <aside class="page-hero__panel">
+            <p class="page-hero__panel-label">What happens next</p>
+            <strong>Enroll, pay if needed, and receive dashboard access automatically.</strong>
+            <ul class="page-hero__list">
+              <li>Choose your workshop path</li>
+              <li>Complete the form and payment if required</li>
+              <li>Get onboarding email and learner dashboard access</li>
+            </ul>
+          </aside>
+        </section>
+
+        <section class="section">
+          <div class="section-heading reveal">
+            <p class="eyebrow">Products</p>
+            <h2>Start with a free workshop or move directly into a paid experience.</h2>
+          </div>
+          <div class="product-grid" id="product-grid"></div>
+        </section>
+
+        <section class="section cta cta--single">
+          <div class="cta__content reveal">
+            <p class="eyebrow">Enrollment Form</p>
+            <h2>Complete one form and let SkillNest handle the next step.</h2>
+            <p>
+              Free enrollments go straight into onboarding. Paid workshops open
+              Razorpay checkout and then move you to the learner dashboard.
+            </p>
+          </div>
+          <form class="contact-card reveal" id="enrollment-form">
+            <label>
+              Choose Product
+              <select name="productId" id="enrollment-product" required>
+                <option value="">Select a workshop</option>
+              </select>
+            </label>
+            <label>
+              Full Name
+              <input type="text" name="name" placeholder="Your full name" required />
+            </label>
+            <label>
+              Email
+              <input type="email" name="email" placeholder="you@example.com" required />
+            </label>
+            <label>
+              Phone
+              <input type="tel" name="phone" placeholder="Your phone number" required />
+            </label>
+            <label>
+              Learner Type
+              <select name="learnerType" required>
+                <option value="">Select learner type</option>
+                <option value="College Student">College Student</option>
+                <option value="Fresher">Fresher</option>
+                <option value="Early Professional">Early Professional</option>
+                <option value="Knowledge Seeker">Knowledge Seeker</option>
+              </select>
+            </label>
+            <label>
+              Goal
+              <textarea name="goal" rows="4" placeholder="Tell SkillNest what you want to achieve"></textarea>
+            </label>
+            <button type="submit" class="button" id="enrollment-submit">Continue</button>
+            <p class="form-feedback" id="enrollment-feedback" hidden></p>
+          </form>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <p>&copy; 2026 SkillNest, Pune, Maharashtra. Knowledge is the power.</p>
+        <div>
+          <a href="index.html">Home</a>
+          <a href="services.html">Services</a>
+          <a href="workshops.html">Workshops</a>
+          <a href="learner-dashboard.html">Learner Dashboard</a>
+          <a href="contact.html">Contact</a>
+        </div>
+      </footer>
+    </div>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+    <script src="enroll.js"></script>
+  </body>
+</html>

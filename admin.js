@@ -1,9 +1,11 @@
 const inquiryCount = document.querySelector("#admin-inquiries");
 const leadCount = document.querySelector("#admin-leads");
 const chatCount = document.querySelector("#admin-chats");
+const enrollmentCount = document.querySelector("#admin-enrollments");
 const inquiryList = document.querySelector("#admin-inquiry-list");
 const leadList = document.querySelector("#admin-lead-list");
 const chatList = document.querySelector("#admin-chat-list");
+const enrollmentList = document.querySelector("#admin-enrollment-list");
 const aiContentForm = document.querySelector("#admin-ai-content-form");
 const aiContentFeedback = document.querySelector("#admin-ai-feedback");
 const aiContentOutput = document.querySelector("#admin-ai-output");
@@ -473,6 +475,9 @@ async function loadAdminOverview() {
     inquiryCount.textContent = String(payload.counts.inquiries);
     leadCount.textContent = String(payload.counts.leads);
     chatCount.textContent = String(payload.counts.chatMessages);
+    if (enrollmentCount) {
+      enrollmentCount.textContent = String(payload.counts.enrollments || 0);
+    }
 
     renderItems(inquiryList, payload.inquiries, (item) => `
       <article class="admin-item">
@@ -594,9 +599,25 @@ async function loadAdminOverview() {
         </div>
       </article>
     `);
+
+    renderItems(enrollmentList, payload.enrollments || [], (item) => `
+      <article class="admin-item">
+        <strong>${item.learner_name}</strong>
+        <p>${item.learner_email}</p>
+        <p>${item.product_name}</p>
+        <p>${item.product_type} | ₹${item.amount_inr}</p>
+        <span class="admin-status admin-status--${item.status}">${item.status}</span>
+        <p>Onboarding sent: ${item.onboarding_sent ? "Yes" : "No"}</p>
+        <span>${item.created_at}</span>
+      </article>
+    `);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load admin data.";
-    [inquiryList, leadList, chatList].forEach((container) => renderEmptyState(container, message));
+    [inquiryList, leadList, chatList, enrollmentList].forEach((container) => {
+      if (container) {
+        renderEmptyState(container, message);
+      }
+    });
   }
 }
 

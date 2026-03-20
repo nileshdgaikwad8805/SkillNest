@@ -13,7 +13,7 @@ function renderWorkshopCard(workshop) {
         <li>${workshop.duration_text}</li>
         <li>${workshop.level_text}</li>
       </ul>
-      <a class="button" href="${workshop.cta_link}">${workshop.cta_text}</a>
+      <a class="button" href="${workshop.cta_link === 'contact.html' ? 'enroll.html' : workshop.cta_link}">${workshop.cta_text}</a>
     </article>
   `;
 }

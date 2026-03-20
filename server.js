@@ -46,6 +46,9 @@ const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "")
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "SkillNest <onboarding@resend.dev>";
 const NOTIFY_EMAIL_TO = process.env.NOTIFY_EMAIL_TO || "";
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
+const APP_BASE_URL = process.env.APP_BASE_URL || "";
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -54,8 +57,57 @@ if (!fs.existsSync(DATA_DIR)) {
 const db = new DatabaseSync(DB_PATH);
 const adminSessions = new Map();
 const resendConfigured = Boolean(RESEND_API_KEY && RESEND_FROM_EMAIL && NOTIFY_EMAIL_TO);
+const razorpayConfigured = Boolean(RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET);
 const NURTURE_DELAYS_DAYS = [2, 5, 10];
 let nurtureLoopActive = false;
+
+const PRODUCT_CATALOG = [
+  {
+    id: "free-community-workshop",
+    type: "free",
+    category: "Community Workshop",
+    name: "Free Community Workshop Pass",
+    priceInr: 0,
+    description:
+      "An open-entry SkillNest community workshop for students, freshers, and knowledge seekers who want a low-risk first step.",
+    includes: [
+      "Live community workshop access",
+      "Skill guidance from SkillNest AI",
+      "Post-workshop next-step recommendations",
+    ],
+    ctaLabel: "Register Free",
+  },
+  {
+    id: "paid-ai-workshop",
+    type: "paid",
+    category: "Paid Workshop",
+    name: "AI Career Starter Workshop",
+    priceInr: 1499,
+    description:
+      "A paid practical workshop focused on AI fundamentals, tool exposure, guided exercises, and clearer career direction.",
+    includes: [
+      "Guided live workshop",
+      "Practical exercises and assignments",
+      "Learner dashboard access and onboarding",
+    ],
+    ctaLabel: "Pay & Enroll",
+  },
+  {
+    id: "paid-cloud-workshop",
+    type: "paid",
+    category: "Paid Workshop",
+    name: "Cloud Foundations Workshop",
+    priceInr: 1999,
+    description:
+      "A hands-on cloud workshop for learners who want stronger practical clarity before moving into deeper training paths.",
+    includes: [
+      "Structured workshop delivery",
+      "Foundational cloud roadmap",
+      "Access to onboarding and next-step guidance",
+    ],
+    ctaLabel: "Pay & Enroll",
+  },
+];
 
 function createPasswordHash(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -81,6 +133,24 @@ function toIsoDateOffset(days) {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function getProductById(productId) {
+  return PRODUCT_CATALOG.find((product) => product.id === productId) || null;
+}
+
+function getBaseUrl(request) {
+  if (APP_BASE_URL) {
+    return APP_BASE_URL.replace(/\/$/, "");
+  }
+
+  if (!request) {
+    return "";
+  }
+
+  const proto = request.headers["x-forwarded-proto"] || "http";
+  const host = request.headers.host || "";
+  return host ? `${proto}://${host}` : "";
 }
 
 db.exec(`
@@ -155,6 +225,29 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS enrollments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id TEXT NOT NULL,
+    product_name TEXT NOT NULL,
+    product_type TEXT NOT NULL,
+    amount_inr INTEGER NOT NULL DEFAULT 0,
+    currency TEXT NOT NULL DEFAULT 'INR',
+    learner_name TEXT NOT NULL,
+    learner_email TEXT NOT NULL,
+    learner_phone TEXT NOT NULL,
+    learner_type TEXT NOT NULL,
+    learner_goal TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'pending',
+    payment_provider TEXT NOT NULL DEFAULT '',
+    provider_order_id TEXT NOT NULL DEFAULT '',
+    provider_payment_id TEXT NOT NULL DEFAULT '',
+    provider_signature TEXT NOT NULL DEFAULT '',
+    access_token TEXT NOT NULL UNIQUE,
+    onboarding_sent INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
@@ -269,6 +362,7 @@ const selectInquiryCount = db.prepare(`SELECT COUNT(*) AS count FROM contact_inq
 const selectLeadCount = db.prepare(`SELECT COUNT(*) AS count FROM chatbot_leads`);
 const selectChatCount = db.prepare(`SELECT COUNT(*) AS count FROM chat_messages`);
 const selectWorkshopCount = db.prepare(`SELECT COUNT(*) AS count FROM workshops`);
+const selectEnrollmentCount = db.prepare(`SELECT COUNT(*) AS count FROM enrollments`);
 const selectRecentInquiries = db.prepare(`
   SELECT id, name, email, organization, interest, message, source, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent, nurture_stage, nurture_next_run_at, nurture_last_sent_at, created_at
   FROM contact_inquiries
@@ -317,6 +411,57 @@ const updateLeadStatus = db.prepare(`
   UPDATE chatbot_leads
   SET status = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
   WHERE id = ?
+`);
+const insertEnrollment = db.prepare(`
+  INSERT INTO enrollments (
+    product_id,
+    product_name,
+    product_type,
+    amount_inr,
+    currency,
+    learner_name,
+    learner_email,
+    learner_phone,
+    learner_type,
+    learner_goal,
+    status,
+    payment_provider,
+    provider_order_id,
+    access_token,
+    onboarding_sent
+  )
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`);
+const updateEnrollmentOrder = db.prepare(`
+  UPDATE enrollments
+  SET provider_order_id = ?, updated_at = CURRENT_TIMESTAMP
+  WHERE id = ?
+`);
+const updateEnrollmentPayment = db.prepare(`
+  UPDATE enrollments
+  SET status = ?, provider_payment_id = ?, provider_signature = ?, updated_at = CURRENT_TIMESTAMP
+  WHERE id = ?
+`);
+const updateEnrollmentOnboarding = db.prepare(`
+  UPDATE enrollments
+  SET onboarding_sent = ?, updated_at = CURRENT_TIMESTAMP
+  WHERE id = ?
+`);
+const selectEnrollmentById = db.prepare(`
+  SELECT *
+  FROM enrollments
+  WHERE id = ?
+`);
+const selectEnrollmentByToken = db.prepare(`
+  SELECT *
+  FROM enrollments
+  WHERE access_token = ?
+`);
+const selectRecentEnrollments = db.prepare(`
+  SELECT *
+  FROM enrollments
+  ORDER BY id DESC
+  LIMIT 20
 `);
 const selectDueInquiryNurtures = db.prepare(`
   SELECT id, name, email, organization, interest, message, ai_summary, ai_next_step, nurture_stage, nurture_next_run_at
@@ -628,6 +773,39 @@ async function sendTransactionalEmail({ to, subject, text, html }) {
   return true;
 }
 
+async function createRazorpayOrder({ amountInr, receipt, notes }) {
+  const auth = Buffer.from(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`).toString("base64");
+  const response = await fetch("https://api.razorpay.com/v1/orders", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      amount: amountInr * 100,
+      currency: "INR",
+      receipt,
+      notes,
+    }),
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload?.error?.description || payload?.error?.reason || "Unable to create Razorpay order.");
+  }
+
+  return payload;
+}
+
+function verifyRazorpaySignature({ orderId, paymentId, signature }) {
+  const digest = crypto
+    .createHmac("sha256", RAZORPAY_KEY_SECRET)
+    .update(`${orderId}|${paymentId}`)
+    .digest("hex");
+
+  return digest === signature;
+}
+
 async function notifyInquirySaved({ name, email, organization, interest, message, source, inquiryId, aiSummary, aiNextStep }) {
   try {
     await sendNotificationEmail({
@@ -710,6 +888,46 @@ async function sendAutomatedFollowup({ to, subject, body }) {
     return true;
   } catch (error) {
     console.error("Automated follow-up failed:", error);
+    return false;
+  }
+}
+
+async function sendLearnerOnboardingEmail({ request, enrollment }) {
+  if (!enrollment?.learner_email) {
+    return false;
+  }
+
+  const baseUrl = getBaseUrl(request);
+  const dashboardLink = baseUrl
+    ? `${baseUrl}/learner-dashboard.html?token=${encodeURIComponent(enrollment.access_token)}`
+    : `learner-dashboard.html?token=${encodeURIComponent(enrollment.access_token)}`;
+
+  const subject = `Welcome to ${enrollment.product_name}`;
+  const text =
+    `Hi ${enrollment.learner_name},\n\n` +
+    `Your SkillNest enrollment is confirmed for ${enrollment.product_name}.\n` +
+    `Use your learner dashboard here: ${dashboardLink}\n\n` +
+    `We will guide you through the next steps, onboarding, and workshop readiness from there.\n\n` +
+    `SkillNest\nKnowledge is the power.`;
+
+  const html =
+    `<p>Hi ${enrollment.learner_name},</p>` +
+    `<p>Your SkillNest enrollment is confirmed for <strong>${enrollment.product_name}</strong>.</p>` +
+    `<p><a href="${dashboardLink}">Open your learner dashboard</a></p>` +
+    `<p>We will guide you through the next steps, onboarding, and workshop readiness from there.</p>` +
+    `<p>SkillNest<br>Knowledge is the power.</p>`;
+
+  try {
+    await sendTransactionalEmail({
+      to: enrollment.learner_email,
+      subject,
+      text,
+      html,
+    });
+    updateEnrollmentOnboarding.run(1, enrollment.id);
+    return true;
+  } catch (error) {
+    console.error("Learner onboarding email failed:", error);
     return false;
   }
 }
@@ -1278,6 +1496,7 @@ function handleAdminOverview(request, response) {
         leads: selectLeadCount.get().count,
         chatMessages: selectChatCount.get().count,
         workshops: selectWorkshopCount.get().count,
+        enrollments: selectEnrollmentCount.get().count,
       },
       notifications: {
         enabled: resendConfigured,
@@ -1287,6 +1506,7 @@ function handleAdminOverview(request, response) {
       leads: selectRecentLeads.all(),
       chatMessages: selectRecentChats.all(),
       workshops: selectWorkshops.all(),
+      enrollments: selectRecentEnrollments.all(),
     });
   } catch (error) {
     sendJson(response, 500, {
@@ -1408,6 +1628,225 @@ async function handleAdminChangePassword(request, response) {
 function handleWorkshopList(_request, response) {
   sendJson(response, 200, {
     workshops: selectPublicWorkshops.all(),
+  });
+}
+
+function handleProductCatalog(_request, response) {
+  sendJson(response, 200, {
+    products: PRODUCT_CATALOG,
+    razorpayEnabled: razorpayConfigured,
+    razorpayKeyId: razorpayConfigured ? RAZORPAY_KEY_ID : "",
+  });
+}
+
+async function handleFreeEnrollment(request, response) {
+  try {
+    const body = await parseJsonBody(request);
+    const productId = String(body.productId || "").trim();
+    const learnerName = String(body.name || "").trim();
+    const learnerEmail = String(body.email || "").trim();
+    const learnerPhone = String(body.phone || "").trim();
+    const learnerType = String(body.learnerType || "").trim();
+    const learnerGoal = String(body.goal || "").trim();
+    const product = getProductById(productId);
+
+    if (!product || product.type !== "free") {
+      sendJson(response, 400, { error: "Invalid free product selection." });
+      return;
+    }
+
+    if (!learnerName || !learnerEmail || !learnerPhone || !learnerType) {
+      sendJson(response, 400, { error: "Name, email, phone, and learner type are required." });
+      return;
+    }
+
+    const accessToken = crypto.randomUUID();
+    const result = insertEnrollment.run(
+      product.id,
+      product.name,
+      product.type,
+      product.priceInr,
+      "INR",
+      learnerName,
+      learnerEmail,
+      learnerPhone,
+      learnerType,
+      learnerGoal,
+      "enrolled",
+      "free",
+      "",
+      accessToken,
+      0
+    );
+
+    const enrollment = selectEnrollmentById.get(Number(result.lastInsertRowid));
+    await sendLearnerOnboardingEmail({ request, enrollment });
+
+    sendJson(response, 201, {
+      success: true,
+      enrollmentId: enrollment.id,
+      accessToken: enrollment.access_token,
+      redirectUrl: `/learner-dashboard.html?token=${encodeURIComponent(enrollment.access_token)}`,
+    });
+  } catch (error) {
+    sendJson(response, 500, {
+      error: error instanceof Error ? error.message : "Unable to complete free registration.",
+    });
+  }
+}
+
+async function handleRazorpayOrderCreate(request, response) {
+  try {
+    if (!razorpayConfigured) {
+      sendJson(response, 503, { error: "Razorpay is not configured yet." });
+      return;
+    }
+
+    const body = await parseJsonBody(request);
+    const productId = String(body.productId || "").trim();
+    const learnerName = String(body.name || "").trim();
+    const learnerEmail = String(body.email || "").trim();
+    const learnerPhone = String(body.phone || "").trim();
+    const learnerType = String(body.learnerType || "").trim();
+    const learnerGoal = String(body.goal || "").trim();
+    const product = getProductById(productId);
+
+    if (!product || product.type !== "paid") {
+      sendJson(response, 400, { error: "Invalid paid product selection." });
+      return;
+    }
+
+    if (!learnerName || !learnerEmail || !learnerPhone || !learnerType) {
+      sendJson(response, 400, { error: "Name, email, phone, and learner type are required." });
+      return;
+    }
+
+    const accessToken = crypto.randomUUID();
+    const insertResult = insertEnrollment.run(
+      product.id,
+      product.name,
+      product.type,
+      product.priceInr,
+      "INR",
+      learnerName,
+      learnerEmail,
+      learnerPhone,
+      learnerType,
+      learnerGoal,
+      "payment_pending",
+      "razorpay",
+      "",
+      accessToken,
+      0
+    );
+    const enrollmentId = Number(insertResult.lastInsertRowid);
+
+    const order = await createRazorpayOrder({
+      amountInr: product.priceInr,
+      receipt: `skillnest_${enrollmentId}`,
+      notes: {
+        enrollment_id: String(enrollmentId),
+        product_id: product.id,
+        learner_email: learnerEmail,
+      },
+    });
+
+    updateEnrollmentOrder.run(String(order.id || ""), enrollmentId);
+
+    sendJson(response, 201, {
+      success: true,
+      enrollmentId,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency,
+      keyId: RAZORPAY_KEY_ID,
+      product,
+      learner: {
+        name: learnerName,
+        email: learnerEmail,
+        contact: learnerPhone,
+      },
+    });
+  } catch (error) {
+    sendJson(response, 500, {
+      error: error instanceof Error ? error.message : "Unable to create Razorpay order.",
+    });
+  }
+}
+
+async function handleRazorpayVerify(request, response) {
+  try {
+    const body = await parseJsonBody(request);
+    const enrollmentId = Number(body.enrollmentId || 0);
+    const orderId = String(body.razorpay_order_id || "").trim();
+    const paymentId = String(body.razorpay_payment_id || "").trim();
+    const signature = String(body.razorpay_signature || "").trim();
+
+    if (!enrollmentId || !orderId || !paymentId || !signature) {
+      sendJson(response, 400, { error: "Payment verification details are required." });
+      return;
+    }
+
+    const enrollment = selectEnrollmentById.get(enrollmentId);
+    if (!enrollment) {
+      sendJson(response, 404, { error: "Enrollment not found." });
+      return;
+    }
+
+    if (enrollment.provider_order_id !== orderId) {
+      sendJson(response, 400, { error: "Payment order mismatch." });
+      return;
+    }
+
+    if (!verifyRazorpaySignature({ orderId, paymentId, signature })) {
+      sendJson(response, 400, { error: "Invalid payment signature." });
+      return;
+    }
+
+    updateEnrollmentPayment.run("enrolled", paymentId, signature, enrollmentId);
+    const updatedEnrollment = selectEnrollmentById.get(enrollmentId);
+    await sendLearnerOnboardingEmail({ request, enrollment: updatedEnrollment });
+
+    sendJson(response, 200, {
+      success: true,
+      redirectUrl: `/payment-success.html?token=${encodeURIComponent(updatedEnrollment.access_token)}`,
+      accessToken: updatedEnrollment.access_token,
+    });
+  } catch (error) {
+    sendJson(response, 500, {
+      error: error instanceof Error ? error.message : "Unable to verify payment.",
+    });
+  }
+}
+
+function handleLearnerSession(request, response, requestUrl) {
+  const token = String(requestUrl.searchParams.get("token") || "").trim();
+  if (!token) {
+    sendJson(response, 400, { error: "Learner token is required." });
+    return;
+  }
+
+  const enrollment = selectEnrollmentByToken.get(token);
+  if (!enrollment) {
+    sendJson(response, 404, { error: "Learner session not found." });
+    return;
+  }
+
+  sendJson(response, 200, {
+    enrollment: {
+      id: enrollment.id,
+      productName: enrollment.product_name,
+      productType: enrollment.product_type,
+      amountInr: enrollment.amount_inr,
+      learnerName: enrollment.learner_name,
+      learnerEmail: enrollment.learner_email,
+      learnerPhone: enrollment.learner_phone,
+      learnerType: enrollment.learner_type,
+      learnerGoal: enrollment.learner_goal,
+      status: enrollment.status,
+      onboardingSent: Boolean(enrollment.onboarding_sent),
+      createdAt: enrollment.created_at,
+    },
   });
 }
 
@@ -1624,8 +2063,14 @@ function serveStatic(request, response, pathname) {
   }
 
   const filePath = getSafeFilePath(pathname);
+  const blockedFiles = new Set(["server.js", ".env", "package.json", "render.yaml", "netlify.toml", "vercel.json"]);
 
   if (!filePath.startsWith(ROOT)) {
+    sendJson(response, 403, { error: "Forbidden" });
+    return;
+  }
+
+  if (filePath.startsWith(DATA_DIR) || blockedFiles.has(path.basename(filePath)) || path.basename(filePath).startsWith(".")) {
     sendJson(response, 403, { error: "Forbidden" });
     return;
   }
@@ -1723,6 +2168,31 @@ const server = http.createServer((request, response) => {
 
   if (request.method === "GET" && requestUrl.pathname === "/api/workshops") {
     handleWorkshopList(request, response);
+    return;
+  }
+
+  if (request.method === "GET" && requestUrl.pathname === "/api/products") {
+    handleProductCatalog(request, response);
+    return;
+  }
+
+  if (request.method === "GET" && requestUrl.pathname === "/api/learner/session") {
+    handleLearnerSession(request, response, requestUrl);
+    return;
+  }
+
+  if (request.method === "POST" && requestUrl.pathname === "/api/enrollments/free") {
+    handleFreeEnrollment(request, response);
+    return;
+  }
+
+  if (request.method === "POST" && requestUrl.pathname === "/api/payments/razorpay/order") {
+    handleRazorpayOrderCreate(request, response);
+    return;
+  }
+
+  if (request.method === "POST" && requestUrl.pathname === "/api/payments/razorpay/verify") {
+    handleRazorpayVerify(request, response);
     return;
   }
 

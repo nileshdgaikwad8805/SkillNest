@@ -640,7 +640,9 @@ a {
 .story-grid,
 .trust-grid,
 .testimonial-grid,
-.enterprise-grid {
+.enterprise-grid,
+.product-grid,
+.dashboard-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
@@ -711,6 +713,19 @@ a {
 .enterprise-card p {
   color: var(--muted);
   line-height: 1.65;
+}
+
+.product-price {
+  display: inline-block;
+  margin: 8px 0 14px;
+  font-family: "Sora", sans-serif;
+  font-size: 1.1rem;
+  color: var(--accent-deep);
+}
+
+.success-card {
+  max-width: 720px;
+  margin: 0 auto;
 }
 
 .story-card__label {

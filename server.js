@@ -80,8 +80,12 @@ db.exec(`
     interest TEXT NOT NULL,
     message TEXT NOT NULL,
     source TEXT NOT NULL DEFAULT 'contact_form',
+    ai_score INTEGER NOT NULL DEFAULT 0,
     ai_summary TEXT NOT NULL DEFAULT '',
     ai_next_step TEXT NOT NULL DEFAULT '',
+    ai_followup_subject TEXT NOT NULL DEFAULT '',
+    ai_followup_body TEXT NOT NULL DEFAULT '',
+    ai_followup_sent INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -94,8 +98,12 @@ db.exec(`
     interest TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'new',
     notes TEXT NOT NULL DEFAULT '',
+    ai_score INTEGER NOT NULL DEFAULT 0,
     ai_summary TEXT NOT NULL DEFAULT '',
     ai_next_step TEXT NOT NULL DEFAULT '',
+    ai_followup_subject TEXT NOT NULL DEFAULT '',
+    ai_followup_body TEXT NOT NULL DEFAULT '',
+    ai_followup_sent INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -145,10 +153,18 @@ function ensureColumn(tableName, columnName, columnDefinition) {
 ensureColumn("chatbot_leads", "status", "TEXT NOT NULL DEFAULT 'new'");
 ensureColumn("chatbot_leads", "notes", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("chatbot_leads", "updated_at", "TEXT");
+ensureColumn("chatbot_leads", "ai_score", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn("chatbot_leads", "ai_summary", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("chatbot_leads", "ai_next_step", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("chatbot_leads", "ai_followup_subject", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("chatbot_leads", "ai_followup_body", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("chatbot_leads", "ai_followup_sent", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("contact_inquiries", "ai_score", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn("contact_inquiries", "ai_summary", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("contact_inquiries", "ai_next_step", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("contact_inquiries", "ai_followup_subject", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("contact_inquiries", "ai_followup_body", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("contact_inquiries", "ai_followup_sent", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn("workshops", "ai_workshop_description", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("workshops", "ai_announcement", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("workshops", "ai_social_posts", "TEXT NOT NULL DEFAULT ''");
@@ -157,13 +173,21 @@ db.exec(`
   SET updated_at = COALESCE(updated_at, created_at),
       status = COALESCE(status, 'new'),
       notes = COALESCE(notes, ''),
+      ai_score = COALESCE(ai_score, 0),
       ai_summary = COALESCE(ai_summary, ''),
-      ai_next_step = COALESCE(ai_next_step, '')
+      ai_next_step = COALESCE(ai_next_step, ''),
+      ai_followup_subject = COALESCE(ai_followup_subject, ''),
+      ai_followup_body = COALESCE(ai_followup_body, ''),
+      ai_followup_sent = COALESCE(ai_followup_sent, 0)
 `);
 db.exec(`
   UPDATE contact_inquiries
-  SET ai_summary = COALESCE(ai_summary, ''),
-      ai_next_step = COALESCE(ai_next_step, '')
+  SET ai_score = COALESCE(ai_score, 0),
+      ai_summary = COALESCE(ai_summary, ''),
+      ai_next_step = COALESCE(ai_next_step, ''),
+      ai_followup_subject = COALESCE(ai_followup_subject, ''),
+      ai_followup_body = COALESCE(ai_followup_body, ''),
+      ai_followup_sent = COALESCE(ai_followup_sent, 0)
 `);
 db.exec(`
   UPDATE workshops
@@ -173,8 +197,8 @@ db.exec(`
 `);
 
 const insertInquiry = db.prepare(`
-  INSERT INTO contact_inquiries (name, email, organization, interest, message, source, ai_summary, ai_next_step)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO contact_inquiries (name, email, organization, interest, message, source, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const selectAdminUser = db.prepare(`
   SELECT id, username, password_hash, created_at, updated_at
@@ -192,8 +216,8 @@ const updateAdminPassword = db.prepare(`
   WHERE id = ?
 `);
 const insertLead = db.prepare(`
-  INSERT INTO chatbot_leads (session_id, name, contact, learner_type, interest, status, notes, ai_summary, ai_next_step)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO chatbot_leads (session_id, name, contact, learner_type, interest, status, notes, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const insertChatMessage = db.prepare(`
   INSERT INTO chat_messages (session_id, role, content)
@@ -204,13 +228,13 @@ const selectLeadCount = db.prepare(`SELECT COUNT(*) AS count FROM chatbot_leads`
 const selectChatCount = db.prepare(`SELECT COUNT(*) AS count FROM chat_messages`);
 const selectWorkshopCount = db.prepare(`SELECT COUNT(*) AS count FROM workshops`);
 const selectRecentInquiries = db.prepare(`
-  SELECT id, name, email, organization, interest, message, source, ai_summary, ai_next_step, created_at
+  SELECT id, name, email, organization, interest, message, source, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent, created_at
   FROM contact_inquiries
   ORDER BY id DESC
   LIMIT 20
 `);
 const selectRecentLeads = db.prepare(`
-  SELECT id, session_id, name, contact, learner_type, interest, status, notes, ai_summary, ai_next_step, created_at, updated_at
+  SELECT id, session_id, name, contact, learner_type, interest, status, notes, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent, created_at, updated_at
   FROM chatbot_leads
   ORDER BY id DESC
   LIMIT 20
@@ -510,6 +534,34 @@ async function sendNotificationEmail({ subject, text, html }) {
   return true;
 }
 
+async function sendTransactionalEmail({ to, subject, text, html }) {
+  if (!resendConfigured || !to) {
+    return false;
+  }
+
+  const resendResponse = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM_EMAIL,
+      to: [to],
+      subject,
+      text,
+      html,
+    }),
+  });
+
+  const resendPayload = await resendResponse.json();
+  if (!resendResponse.ok) {
+    throw new Error(resendPayload?.message || resendPayload?.error || "Resend request failed.");
+  }
+
+  return true;
+}
+
 async function notifyInquirySaved({ name, email, organization, interest, message, source, inquiryId, aiSummary, aiNextStep }) {
   try {
     await sendNotificationEmail({
@@ -572,6 +624,30 @@ async function notifyLeadSaved({ name, contact, learnerType, interest, leadId, s
   }
 }
 
+function extractEmailAddress(value) {
+  const text = String(value || "").trim();
+  return text.includes("@") ? text : "";
+}
+
+async function sendAutomatedFollowup({ to, subject, body }) {
+  if (!to || !subject || !body) {
+    return false;
+  }
+
+  try {
+    await sendTransactionalEmail({
+      to,
+      subject,
+      text: body,
+      html: `<p>${body.replace(/\n/g, "<br>")}</p>`,
+    });
+    return true;
+  } catch (error) {
+    console.error("Automated follow-up failed:", error);
+    return false;
+  }
+}
+
 async function callGemini({ instructions, contents }) {
   const geminiResponse = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
@@ -601,15 +677,17 @@ async function callGemini({ instructions, contents }) {
 
 async function generateInquiryAutomation({ name, organization, interest, message }) {
   if (!GEMINI_API_KEY) {
-    return { aiSummary: "", aiNextStep: "" };
+    return { aiScore: 0, aiSummary: "", aiNextStep: "", aiFollowupSubject: "", aiFollowupBody: "" };
   }
 
   const output = await callGemini({
     instructions:
       "You are SkillNest's internal AI intake assistant. " +
       "Summarize incoming inquiries for admins. " +
-      "Return exactly two lines in this format: SUMMARY: ... and NEXT_STEP: ... " +
-      "Keep each line concise, practical, and actionable. " +
+      "Return exactly these lines: SCORE: ..., SUMMARY: ..., NEXT_STEP: ..., FOLLOWUP_SUBJECT: ..., FOLLOWUP_BODY: ... " +
+      "Use an integer score from 1 to 100. " +
+      "Keep summary and next step concise, practical, and actionable. " +
+      "The follow-up should be a short email body from SkillNest that warmly guides the learner to the best next step. " +
       "Do not invent details.",
     contents: [
       {
@@ -627,26 +705,34 @@ async function generateInquiryAutomation({ name, organization, interest, message
     ],
   });
 
+  const scoreMatch = output.match(/SCORE:\s*(\d+)/i);
   const summaryMatch = output.match(/SUMMARY:\s*(.+)/i);
   const nextStepMatch = output.match(/NEXT_STEP:\s*(.+)/i);
+  const subjectMatch = output.match(/FOLLOWUP_SUBJECT:\s*(.+)/i);
+  const bodyMatch = output.match(/FOLLOWUP_BODY:\s*([\s\S]*)$/i);
 
   return {
+    aiScore: Number(scoreMatch?.[1] || 0),
     aiSummary: summaryMatch?.[1]?.trim() || "",
     aiNextStep: nextStepMatch?.[1]?.trim() || "",
+    aiFollowupSubject: subjectMatch?.[1]?.trim() || "",
+    aiFollowupBody: bodyMatch?.[1]?.trim() || "",
   };
 }
 
 async function generateLeadAutomation({ name, learnerType, interest, contact }) {
   if (!GEMINI_API_KEY) {
-    return { aiSummary: "", aiNextStep: "" };
+    return { aiScore: 0, aiSummary: "", aiNextStep: "", aiFollowupSubject: "", aiFollowupBody: "" };
   }
 
   const output = await callGemini({
     instructions:
       "You are SkillNest's internal AI lead triage assistant. " +
       "Summarize a lead and recommend the best next step for the SkillNest team. " +
-      "Return exactly two lines in this format: SUMMARY: ... and NEXT_STEP: ... " +
+      "Return exactly these lines: SCORE: ..., SUMMARY: ..., NEXT_STEP: ..., FOLLOWUP_SUBJECT: ..., FOLLOWUP_BODY: ... " +
+      "Use an integer score from 1 to 100. " +
       "Keep the advice actionable and short. " +
+      "The follow-up should be a short outreach email from SkillNest that matches the lead's learner type and interest. " +
       "Do not invent fees, dates, or commitments.",
     contents: [
       {
@@ -664,12 +750,18 @@ async function generateLeadAutomation({ name, learnerType, interest, contact }) 
     ],
   });
 
+  const scoreMatch = output.match(/SCORE:\s*(\d+)/i);
   const summaryMatch = output.match(/SUMMARY:\s*(.+)/i);
   const nextStepMatch = output.match(/NEXT_STEP:\s*(.+)/i);
+  const subjectMatch = output.match(/FOLLOWUP_SUBJECT:\s*(.+)/i);
+  const bodyMatch = output.match(/FOLLOWUP_BODY:\s*([\s\S]*)$/i);
 
   return {
+    aiScore: Number(scoreMatch?.[1] || 0),
     aiSummary: summaryMatch?.[1]?.trim() || "",
     aiNextStep: nextStepMatch?.[1]?.trim() || "",
+    aiFollowupSubject: subjectMatch?.[1]?.trim() || "",
+    aiFollowupBody: bodyMatch?.[1]?.trim() || "",
   };
 }
 
@@ -869,14 +961,35 @@ async function handleContactInquiry(request, response) {
       return;
     }
 
-    const { aiSummary, aiNextStep } = await generateInquiryAutomation({
+    const { aiScore, aiSummary, aiNextStep, aiFollowupSubject, aiFollowupBody } = await generateInquiryAutomation({
       name,
       organization,
       interest,
       message,
     });
 
-    const result = insertInquiry.run(name, email, organization, interest, message, source, aiSummary, aiNextStep);
+    const aiFollowupSent = (await sendAutomatedFollowup({
+      to: email,
+      subject: aiFollowupSubject,
+      body: aiFollowupBody,
+    }))
+      ? 1
+      : 0;
+
+    const result = insertInquiry.run(
+      name,
+      email,
+      organization,
+      interest,
+      message,
+      source,
+      aiScore,
+      aiSummary,
+      aiNextStep,
+      aiFollowupSubject,
+      aiFollowupBody,
+      aiFollowupSent
+    );
     const inquiryId = Number(result.lastInsertRowid);
 
     await notifyInquirySaved({
@@ -920,14 +1033,38 @@ async function handleLeadCapture(request, response) {
       return;
     }
 
-    const { aiSummary, aiNextStep } = await generateLeadAutomation({
+    const { aiScore, aiSummary, aiNextStep, aiFollowupSubject, aiFollowupBody } = await generateLeadAutomation({
       name,
       learnerType,
       interest,
       contact,
     });
 
-    const result = insertLead.run(sessionId, name, contact, learnerType, interest, status, notes, aiSummary, aiNextStep);
+    const leadEmail = extractEmailAddress(contact);
+    const aiFollowupSent = (await sendAutomatedFollowup({
+      to: leadEmail,
+      subject: aiFollowupSubject,
+      body: aiFollowupBody,
+    }))
+      ? 1
+      : 0;
+    const computedStatus = aiFollowupSent ? "contacted" : status;
+
+    const result = insertLead.run(
+      sessionId,
+      name,
+      contact,
+      learnerType,
+      interest,
+      computedStatus,
+      notes,
+      aiScore,
+      aiSummary,
+      aiNextStep,
+      aiFollowupSubject,
+      aiFollowupBody,
+      aiFollowupSent
+    );
     const leadId = Number(result.lastInsertRowid);
 
     await notifyLeadSaved({
@@ -936,7 +1073,7 @@ async function handleLeadCapture(request, response) {
       learnerType,
       interest,
       leadId,
-      status,
+      status: computedStatus,
       aiSummary,
       aiNextStep,
     });

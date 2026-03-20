@@ -483,8 +483,10 @@ async function loadAdminOverview() {
         ${
           item.ai_summary || item.ai_next_step
             ? `<div class="admin-ai-snippet">
+                <p><strong>AI Score:</strong> ${escapeHtml(item.ai_score)}</p>
                 <p><strong>AI Summary:</strong> ${escapeHtml(item.ai_summary)}</p>
                 <p><strong>AI Next Step:</strong> ${escapeHtml(item.ai_next_step)}</p>
+                <p><strong>Follow-up Sent:</strong> ${item.ai_followup_sent ? "Yes" : "No"}</p>
               </div>`
             : ""
         }
@@ -517,8 +519,10 @@ async function loadAdminOverview() {
         ${
           item.ai_summary || item.ai_next_step
             ? `<div class="admin-ai-snippet">
+                <p><strong>AI Score:</strong> ${escapeHtml(item.ai_score)}</p>
                 <p><strong>AI Summary:</strong> ${escapeHtml(item.ai_summary)}</p>
                 <p><strong>AI Next Step:</strong> ${escapeHtml(item.ai_next_step)}</p>
+                <p><strong>Follow-up Sent:</strong> ${item.ai_followup_sent ? "Yes" : "No"}</p>
               </div>`
             : ""
         }

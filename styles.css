@@ -639,7 +639,8 @@ a {
 .program-grid,
 .story-grid,
 .trust-grid,
-.testimonial-grid {
+.testimonial-grid,
+.enterprise-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
@@ -648,6 +649,7 @@ a {
 
 .program-card,
 .story-card,
+.enterprise-card,
 .trust-card,
 .testimonial-card,
 .impact-card,
@@ -661,6 +663,7 @@ a {
 }
 
 .program-card:hover,
+.enterprise-card:hover,
 .trust-card:hover,
 .testimonial-card:hover,
 .impact-card:hover,
@@ -686,10 +689,28 @@ a {
 }
 
 .program-card h3,
+.enterprise-card h3,
 .story-card h3,
 .leadership__stack h3 {
   margin: 0 0 10px;
   font-family: "Sora", sans-serif;
+}
+
+.enterprise-card {
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(247, 251, 250, 0.92)),
+    var(--surface);
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.enterprise-card p {
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .story-card__label {

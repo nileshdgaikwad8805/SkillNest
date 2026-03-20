@@ -4,6 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { URL } = require("url");
 const { DatabaseSync } = require("node:sqlite");
+const { loadAppConfig } = require("./app-config");
 
 const ROOT = __dirname;
 const ENV_PATH = path.join(ROOT, ".env");
@@ -30,25 +31,24 @@ if (fs.existsSync(ENV_PATH)) {
   });
 }
 
-const PORT = Number(process.env.PORT || 3000);
-const HOST = process.env.HOST || "127.0.0.1";
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "skillnest123";
-const SESSION_COOKIE = "skillnest_admin_session";
-const DATA_DIR = path.join(ROOT, "data");
-const DB_PATH = path.join(DATA_DIR, "skillnest.db");
-const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "")
-  .split(",")
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "SkillNest <onboarding@resend.dev>";
-const NOTIFY_EMAIL_TO = process.env.NOTIFY_EMAIL_TO || "";
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || "";
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || "";
-const APP_BASE_URL = process.env.APP_BASE_URL || "";
+const APP_CONFIG = loadAppConfig(ROOT);
+const PORT = APP_CONFIG.port;
+const HOST = APP_CONFIG.host;
+const GEMINI_API_KEY = APP_CONFIG.geminiApiKey;
+const GEMINI_MODEL = APP_CONFIG.geminiModel;
+const ADMIN_USERNAME = APP_CONFIG.adminUsername;
+const ADMIN_PASSWORD = APP_CONFIG.adminPassword;
+const SESSION_COOKIE = APP_CONFIG.sessionCookie;
+const DATA_DIR = APP_CONFIG.dataDir;
+const DB_PATH = APP_CONFIG.dbPath;
+const ALLOWED_ORIGINS = APP_CONFIG.allowedOrigins;
+const RESEND_API_KEY = APP_CONFIG.resendApiKey;
+const RESEND_FROM_EMAIL = APP_CONFIG.resendFromEmail;
+const NOTIFY_EMAIL_TO = APP_CONFIG.notifyEmailTo;
+const RAZORPAY_KEY_ID = APP_CONFIG.razorpayKeyId;
+const RAZORPAY_KEY_SECRET = APP_CONFIG.razorpayKeySecret;
+const APP_BASE_URL = APP_CONFIG.appBaseUrl;
+const PUBLIC_API_BASE = APP_CONFIG.publicApiBase;
 
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -151,6 +151,19 @@ function getBaseUrl(request) {
   const proto = request.headers["x-forwarded-proto"] || "http";
   const host = request.headers.host || "";
   return host ? `${proto}://${host}` : "";
+}
+
+function buildRuntimeClientConfig(request) {
+  const baseUrl = PUBLIC_API_BASE || "";
+  return `window.SKILLNEST_CONFIG = window.SKILLNEST_CONFIG || ${JSON.stringify(
+    {
+      apiBase: baseUrl,
+      runtimeMode: APP_CONFIG.runtimeMode,
+      platformTarget: APP_CONFIG.platformTarget,
+    },
+    null,
+    2
+  )};\n`;
 }
 
 db.exec(`
@@ -2075,6 +2088,11 @@ function serveStatic(request, response, pathname) {
     return;
   }
 
+  if (pathname === "/config.js") {
+    sendText(response, 200, buildRuntimeClientConfig(request), "application/javascript; charset=utf-8");
+    return;
+  }
+
   fs.readFile(filePath, (error, fileBuffer) => {
     if (error) {
       if (error.code === "ENOENT") {
@@ -2242,6 +2260,11 @@ const server = http.createServer((request, response) => {
 server.listen(PORT, HOST, () => {
   console.log(`SkillNest server running at http://${HOST}:${PORT}`);
   console.log(`Database ready at ${DB_PATH}`);
-  runNurtureCycle();
-  setInterval(runNurtureCycle, 5 * 60 * 1000);
+  console.log(`Platform target: ${APP_CONFIG.platformTarget} (${APP_CONFIG.runtimeMode})`);
+  if (APP_CONFIG.enableBackgroundJobs) {
+    runNurtureCycle();
+    setInterval(runNurtureCycle, 5 * 60 * 1000);
+  } else {
+    console.log("Background jobs are disabled for this runtime.");
+  }
 });

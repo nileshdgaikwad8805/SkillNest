@@ -10,6 +10,67 @@ Use one of these paths:
 2. Netlify or Vercel for the frontend, plus Render or Railway for the backend
    This works well if you want the public pages on a static host and the API on a separate backend host.
 
+## Portability First
+
+The app now uses environment-driven deployment behavior so moving platforms is mostly config work instead of code changes.
+
+Important portability env vars:
+
+```env
+PLATFORM_TARGET=generic
+SERVER_RUNTIME_MODE=long-running
+ENABLE_BACKGROUND_JOBS=true
+PUBLIC_API_BASE=
+DATA_DIR=./data
+# DB_PATH=./data/skillnest.db
+```
+
+What they do:
+
+- `PLATFORM_TARGET`
+  Use values like `render`, `vercel`, `railway`, or `generic` for deployment labeling and runtime awareness.
+- `SERVER_RUNTIME_MODE`
+  Use `long-running` for traditional Node hosts and `serverless` for Vercel-style runtimes.
+- `ENABLE_BACKGROUND_JOBS`
+  Controls whether the built-in nurture loop starts automatically.
+- `PUBLIC_API_BASE`
+  Lets the frontend point to a separate backend without editing source files.
+- `DATA_DIR` / `DB_PATH`
+  Makes local persistent storage configurable instead of hardcoded.
+
+## Platform Notes
+
+### Render / Railway / VPS
+
+Recommended values:
+
+```env
+PLATFORM_TARGET=render
+SERVER_RUNTIME_MODE=long-running
+ENABLE_BACKGROUND_JOBS=true
+PUBLIC_API_BASE=
+```
+
+These hosts are the best fit for the current SQLite + long-running background job architecture.
+
+### Vercel
+
+Use Vercel in one of these ways:
+
+1. Frontend-only on Vercel, backend elsewhere
+   This is the easiest and most portable setup.
+2. Full migration after replacing SQLite and long-running jobs
+
+Recommended values if the backend itself is deployed to a serverless platform:
+
+```env
+PLATFORM_TARGET=vercel
+SERVER_RUNTIME_MODE=serverless
+ENABLE_BACKGROUND_JOBS=false
+```
+
+On Vercel, long-running `setInterval` jobs are not the right primitive; use Cron Jobs / queues / workflows instead.
+
 ## Resend Notifications
 
 Resend is the recommended setup for Render Free because it uses an API instead of SMTP ports.
@@ -46,7 +107,9 @@ ALLOWED_ORIGINS=https://your-render-domain.onrender.com
 
 ## Frontend on Netlify or Vercel
 
-If you deploy the frontend separately, edit [`config.js`](./config.js) and set:
+If you deploy the frontend separately, you can either edit [`config.js`](./config.js) or set `PUBLIC_API_BASE` on the backend runtime config route.
+
+Static option:
 
 ```js
 window.SKILLNEST_CONFIG = {

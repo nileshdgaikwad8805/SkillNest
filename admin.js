@@ -487,6 +487,8 @@ async function loadAdminOverview() {
                 <p><strong>AI Summary:</strong> ${escapeHtml(item.ai_summary)}</p>
                 <p><strong>AI Next Step:</strong> ${escapeHtml(item.ai_next_step)}</p>
                 <p><strong>Follow-up Sent:</strong> ${item.ai_followup_sent ? "Yes" : "No"}</p>
+                <p><strong>Nurture Stage:</strong> ${escapeHtml(item.nurture_stage)}</p>
+                <p><strong>Next Nurture:</strong> ${escapeHtml(item.nurture_next_run_at || "Not scheduled")}</p>
               </div>`
             : ""
         }
@@ -523,6 +525,8 @@ async function loadAdminOverview() {
                 <p><strong>AI Summary:</strong> ${escapeHtml(item.ai_summary)}</p>
                 <p><strong>AI Next Step:</strong> ${escapeHtml(item.ai_next_step)}</p>
                 <p><strong>Follow-up Sent:</strong> ${item.ai_followup_sent ? "Yes" : "No"}</p>
+                <p><strong>Nurture Stage:</strong> ${escapeHtml(item.nurture_stage)}</p>
+                <p><strong>Next Nurture:</strong> ${escapeHtml(item.nurture_next_run_at || "Not scheduled")}</p>
               </div>`
             : ""
         }

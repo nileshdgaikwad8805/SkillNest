@@ -54,6 +54,8 @@ if (!fs.existsSync(DATA_DIR)) {
 const db = new DatabaseSync(DB_PATH);
 const adminSessions = new Map();
 const resendConfigured = Boolean(RESEND_API_KEY && RESEND_FROM_EMAIL && NOTIFY_EMAIL_TO);
+const NURTURE_DELAYS_DAYS = [2, 5, 10];
+let nurtureLoopActive = false;
 
 function createPasswordHash(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -71,6 +73,16 @@ function verifyPassword(password, storedHash) {
   return crypto.timingSafeEqual(Buffer.from(derivedKey, "hex"), Buffer.from(originalKey, "hex"));
 }
 
+function toIsoDateOffset(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString();
+}
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS contact_inquiries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,6 +98,9 @@ db.exec(`
     ai_followup_subject TEXT NOT NULL DEFAULT '',
     ai_followup_body TEXT NOT NULL DEFAULT '',
     ai_followup_sent INTEGER NOT NULL DEFAULT 0,
+    nurture_stage INTEGER NOT NULL DEFAULT 0,
+    nurture_next_run_at TEXT NOT NULL DEFAULT '',
+    nurture_last_sent_at TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -104,6 +119,9 @@ db.exec(`
     ai_followup_subject TEXT NOT NULL DEFAULT '',
     ai_followup_body TEXT NOT NULL DEFAULT '',
     ai_followup_sent INTEGER NOT NULL DEFAULT 0,
+    nurture_stage INTEGER NOT NULL DEFAULT 0,
+    nurture_next_run_at TEXT NOT NULL DEFAULT '',
+    nurture_last_sent_at TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -159,12 +177,18 @@ ensureColumn("chatbot_leads", "ai_next_step", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("chatbot_leads", "ai_followup_subject", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("chatbot_leads", "ai_followup_body", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("chatbot_leads", "ai_followup_sent", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("chatbot_leads", "nurture_stage", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("chatbot_leads", "nurture_next_run_at", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("chatbot_leads", "nurture_last_sent_at", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("contact_inquiries", "ai_score", "INTEGER NOT NULL DEFAULT 0");
 ensureColumn("contact_inquiries", "ai_summary", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("contact_inquiries", "ai_next_step", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("contact_inquiries", "ai_followup_subject", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("contact_inquiries", "ai_followup_body", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("contact_inquiries", "ai_followup_sent", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("contact_inquiries", "nurture_stage", "INTEGER NOT NULL DEFAULT 0");
+ensureColumn("contact_inquiries", "nurture_next_run_at", "TEXT NOT NULL DEFAULT ''");
+ensureColumn("contact_inquiries", "nurture_last_sent_at", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("workshops", "ai_workshop_description", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("workshops", "ai_announcement", "TEXT NOT NULL DEFAULT ''");
 ensureColumn("workshops", "ai_social_posts", "TEXT NOT NULL DEFAULT ''");
@@ -178,7 +202,10 @@ db.exec(`
       ai_next_step = COALESCE(ai_next_step, ''),
       ai_followup_subject = COALESCE(ai_followup_subject, ''),
       ai_followup_body = COALESCE(ai_followup_body, ''),
-      ai_followup_sent = COALESCE(ai_followup_sent, 0)
+      ai_followup_sent = COALESCE(ai_followup_sent, 0),
+      nurture_stage = COALESCE(nurture_stage, 0),
+      nurture_next_run_at = COALESCE(nurture_next_run_at, ''),
+      nurture_last_sent_at = COALESCE(nurture_last_sent_at, '')
 `);
 db.exec(`
   UPDATE contact_inquiries
@@ -187,7 +214,16 @@ db.exec(`
       ai_next_step = COALESCE(ai_next_step, ''),
       ai_followup_subject = COALESCE(ai_followup_subject, ''),
       ai_followup_body = COALESCE(ai_followup_body, ''),
-      ai_followup_sent = COALESCE(ai_followup_sent, 0)
+      ai_followup_sent = COALESCE(ai_followup_sent, 0),
+      nurture_stage = COALESCE(nurture_stage, 0),
+      nurture_next_run_at = COALESCE(nurture_next_run_at, ''),
+      nurture_last_sent_at = COALESCE(nurture_last_sent_at, '')
+`);
+db.exec(`
+  UPDATE contact_inquiries
+  SET nurture_next_run_at = datetime('now', '+2 day'),
+      nurture_last_sent_at = COALESCE(NULLIF(nurture_last_sent_at, ''), CURRENT_TIMESTAMP)
+  WHERE ai_followup_sent = 1 AND nurture_stage = 0 AND nurture_next_run_at = ''
 `);
 db.exec(`
   UPDATE workshops
@@ -195,10 +231,16 @@ db.exec(`
       ai_announcement = COALESCE(ai_announcement, ''),
       ai_social_posts = COALESCE(ai_social_posts, '')
 `);
+db.exec(`
+  UPDATE chatbot_leads
+  SET nurture_next_run_at = datetime('now', '+2 day'),
+      nurture_last_sent_at = COALESCE(NULLIF(nurture_last_sent_at, ''), CURRENT_TIMESTAMP)
+  WHERE ai_followup_sent = 1 AND nurture_stage = 0 AND nurture_next_run_at = ''
+`);
 
 const insertInquiry = db.prepare(`
-  INSERT INTO contact_inquiries (name, email, organization, interest, message, source, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO contact_inquiries (name, email, organization, interest, message, source, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent, nurture_stage, nurture_next_run_at, nurture_last_sent_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const selectAdminUser = db.prepare(`
   SELECT id, username, password_hash, created_at, updated_at
@@ -216,8 +258,8 @@ const updateAdminPassword = db.prepare(`
   WHERE id = ?
 `);
 const insertLead = db.prepare(`
-  INSERT INTO chatbot_leads (session_id, name, contact, learner_type, interest, status, notes, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  INSERT INTO chatbot_leads (session_id, name, contact, learner_type, interest, status, notes, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent, nurture_stage, nurture_next_run_at, nurture_last_sent_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const insertChatMessage = db.prepare(`
   INSERT INTO chat_messages (session_id, role, content)
@@ -228,13 +270,13 @@ const selectLeadCount = db.prepare(`SELECT COUNT(*) AS count FROM chatbot_leads`
 const selectChatCount = db.prepare(`SELECT COUNT(*) AS count FROM chat_messages`);
 const selectWorkshopCount = db.prepare(`SELECT COUNT(*) AS count FROM workshops`);
 const selectRecentInquiries = db.prepare(`
-  SELECT id, name, email, organization, interest, message, source, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent, created_at
+  SELECT id, name, email, organization, interest, message, source, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent, nurture_stage, nurture_next_run_at, nurture_last_sent_at, created_at
   FROM contact_inquiries
   ORDER BY id DESC
   LIMIT 20
 `);
 const selectRecentLeads = db.prepare(`
-  SELECT id, session_id, name, contact, learner_type, interest, status, notes, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent, created_at, updated_at
+  SELECT id, session_id, name, contact, learner_type, interest, status, notes, ai_score, ai_summary, ai_next_step, ai_followup_subject, ai_followup_body, ai_followup_sent, nurture_stage, nurture_next_run_at, nurture_last_sent_at, created_at, updated_at
   FROM chatbot_leads
   ORDER BY id DESC
   LIMIT 20
@@ -274,6 +316,30 @@ const deleteWorkshop = db.prepare(`DELETE FROM workshops WHERE id = ?`);
 const updateLeadStatus = db.prepare(`
   UPDATE chatbot_leads
   SET status = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+  WHERE id = ?
+`);
+const selectDueInquiryNurtures = db.prepare(`
+  SELECT id, name, email, organization, interest, message, ai_summary, ai_next_step, nurture_stage, nurture_next_run_at
+  FROM contact_inquiries
+  WHERE ai_followup_sent = 1 AND nurture_next_run_at != '' AND nurture_next_run_at <= ?
+  ORDER BY id ASC
+  LIMIT 10
+`);
+const selectDueLeadNurtures = db.prepare(`
+  SELECT id, name, contact, learner_type, interest, status, ai_summary, ai_next_step, nurture_stage, nurture_next_run_at
+  FROM chatbot_leads
+  WHERE ai_followup_sent = 1 AND nurture_next_run_at != '' AND nurture_next_run_at <= ?
+  ORDER BY id ASC
+  LIMIT 10
+`);
+const updateInquiryNurture = db.prepare(`
+  UPDATE contact_inquiries
+  SET nurture_stage = ?, nurture_next_run_at = ?, nurture_last_sent_at = ?
+  WHERE id = ?
+`);
+const updateLeadNurture = db.prepare(`
+  UPDATE chatbot_leads
+  SET nurture_stage = ?, nurture_next_run_at = ?, nurture_last_sent_at = ?, updated_at = CURRENT_TIMESTAMP
   WHERE id = ?
 `);
 
@@ -648,6 +714,101 @@ async function sendAutomatedFollowup({ to, subject, body }) {
   }
 }
 
+function buildInquiryNurtureMessage(record) {
+  const stage = Number(record.nurture_stage || 0) + 1;
+  const subject = stage === 1
+    ? `Still exploring ${record.interest}? SkillNest can guide you`
+    : stage === 2
+      ? `A clearer next step for your ${record.interest} journey`
+      : `Last follow-up from SkillNest on ${record.interest}`;
+  const body =
+    `Hi ${record.name},\n\n` +
+    `We wanted to follow up on your interest in ${record.interest}. ` +
+    `${record.ai_summary || "You reached out to SkillNest for guidance."}\n\n` +
+    `Recommended next step: ${record.ai_next_step || "Start with a guided conversation so we can suggest the right path."}\n\n` +
+    `If you would like, reply to this email or reach us on WhatsApp/Contact and we will help you choose the best starting point.\n\n` +
+    `SkillNest\nKnowledge is the power.`;
+
+  return { subject, body };
+}
+
+function buildLeadNurtureMessage(record) {
+  const stage = Number(record.nurture_stage || 0) + 1;
+  const subject = stage === 1
+    ? `SkillNest follow-up for your ${record.interest} interest`
+    : stage === 2
+      ? `A practical next step for your ${record.interest} goals`
+      : `Checking in from SkillNest`;
+  const body =
+    `Hi ${record.name},\n\n` +
+    `You recently showed interest in ${record.interest} at SkillNest. ` +
+    `${record.ai_summary || "We wanted to make sure you have a clear next step."}\n\n` +
+    `Suggested next move: ${record.ai_next_step || "Talk with SkillNest so we can recommend the right workshop or training."}\n\n` +
+    `If you are ready, reply here or connect through WhatsApp/Contact and we will guide you personally.\n\n` +
+    `SkillNest\nKnowledge is the power.`;
+
+  return { subject, body };
+}
+
+async function runNurtureCycle() {
+  if (nurtureLoopActive || !resendConfigured) {
+    return;
+  }
+
+  nurtureLoopActive = true;
+
+  try {
+    const currentTime = nowIso();
+    const dueInquiries = selectDueInquiryNurtures.all(currentTime);
+    for (const inquiry of dueInquiries) {
+      const { subject, body } = buildInquiryNurtureMessage(inquiry);
+      const sent = await sendAutomatedFollowup({
+        to: inquiry.email,
+        subject,
+        body,
+      });
+
+      if (!sent) {
+        continue;
+      }
+
+      const nextStage = Number(inquiry.nurture_stage || 0) + 1;
+      const nextRunAt =
+        nextStage >= NURTURE_DELAYS_DAYS.length ? "" : toIsoDateOffset(NURTURE_DELAYS_DAYS[nextStage]);
+      updateInquiryNurture.run(nextStage, nextRunAt, nowIso(), inquiry.id);
+    }
+
+    const dueLeads = selectDueLeadNurtures.all(currentTime);
+    for (const lead of dueLeads) {
+      const email = extractEmailAddress(lead.contact);
+      if (!email) {
+        updateLeadNurture.run(Number(lead.nurture_stage || 0) + 1, "", nowIso(), lead.id);
+        continue;
+      }
+
+      const { subject, body } = buildLeadNurtureMessage(lead);
+      const sent = await sendAutomatedFollowup({
+        to: email,
+        subject,
+        body,
+      });
+
+      if (!sent) {
+        continue;
+      }
+
+      const nextStage = Number(lead.nurture_stage || 0) + 1;
+      const nextRunAt =
+        nextStage >= NURTURE_DELAYS_DAYS.length ? "" : toIsoDateOffset(NURTURE_DELAYS_DAYS[nextStage]);
+      updateLeadNurture.run(nextStage, nextRunAt, nowIso(), lead.id);
+    }
+  } catch (error) {
+    console.error("Nurture cycle failed:", error);
+  } finally {
+    nurtureLoopActive = false;
+  }
+}
+
 async function callGemini({ instructions, contents }) {
   const geminiResponse = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
@@ -975,6 +1136,9 @@ async function handleContactInquiry(request, response) {
     }))
       ? 1
       : 0;
+    const nurtureStage = 0;
+    const nurtureNextRunAt = aiFollowupSent ? toIsoDateOffset(NURTURE_DELAYS_DAYS[0]) : "";
+    const nurtureLastSentAt = aiFollowupSent ? nowIso() : "";
 
     const result = insertInquiry.run(
       name,
@@ -988,7 +1152,10 @@ async function handleContactInquiry(request, response) {
       aiNextStep,
       aiFollowupSubject,
       aiFollowupBody,
-      aiFollowupSent
+      aiFollowupSent,
+      nurtureStage,
+      nurtureNextRunAt,
+      nurtureLastSentAt
     );
     const inquiryId = Number(result.lastInsertRowid);
 
@@ -1049,6 +1216,9 @@ async function handleLeadCapture(request, response) {
       ? 1
       : 0;
     const computedStatus = aiFollowupSent ? "contacted" : status;
+    const nurtureStage = 0;
+    const nurtureNextRunAt = aiFollowupSent ? toIsoDateOffset(NURTURE_DELAYS_DAYS[0]) : "";
+    const nurtureLastSentAt = aiFollowupSent ? nowIso() : "";
 
     const result = insertLead.run(
       sessionId,
@@ -1063,7 +1233,10 @@ async function handleLeadCapture(request, response) {
       aiNextStep,
       aiFollowupSubject,
       aiFollowupBody,
-      aiFollowupSent
+      aiFollowupSent,
+      nurtureStage,
+      nurtureNextRunAt,
+      nurtureLastSentAt
     );
     const leadId = Number(result.lastInsertRowid);
 
@@ -1599,4 +1772,6 @@ const server = http.createServer((request, response) => {
 server.listen(PORT, HOST, () => {
   console.log(`SkillNest server running at http://${HOST}:${PORT}`);
   console.log(`Database ready at ${DB_PATH}`);
+  runNurtureCycle();
+  setInterval(runNurtureCycle, 5 * 60 * 1000);
 });

@@ -11,8 +11,8 @@ const aiContentFeedback = document.querySelector("#admin-ai-feedback");
 const aiContentOutput = document.querySelector("#admin-ai-output");
 const aiContentOutputText = document.querySelector("#admin-ai-output-text");
 const refreshButtons = document.querySelectorAll(".admin-refresh");
-const adminTokenKey = "skillnest_admin_token";
-const apiBase = String(window.SKILLNEST_CONFIG?.apiBase || "").replace(/\/$/, "");
+const adminTokenKey = "vidyaops_admin_token";
+const apiBase = String(window.VIDYAOPS_CONFIG?.apiBase || "").replace(/\/$/, "");
 const apiUrl = (pathname) => (apiBase ? `${apiBase}${pathname}` : pathname);
 
 function getAuthHeaders(includeJson = false) {
@@ -100,15 +100,15 @@ function attachAdminControls() {
   };
 
   document.querySelector("#export-inquiries")?.addEventListener("click", async () => {
-    await downloadCsv("/api/admin/export/inquiries.csv", "skillnest-inquiries.csv");
+    await downloadCsv("/api/admin/export/inquiries.csv", "vidyaops-inquiries.csv");
   });
 
   document.querySelector("#export-leads")?.addEventListener("click", async () => {
-    await downloadCsv("/api/admin/export/leads.csv", "skillnest-leads.csv");
+    await downloadCsv("/api/admin/export/leads.csv", "vidyaops-leads.csv");
   });
 
   document.querySelector("#export-workshops")?.addEventListener("click", async () => {
-    await downloadCsv("/api/admin/export/workshops.csv", "skillnest-workshops.csv");
+    await downloadCsv("/api/admin/export/workshops.csv", "vidyaops-workshops.csv");
   });
 
   document.querySelector("#send-test-email")?.addEventListener("click", async () => {

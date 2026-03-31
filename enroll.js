@@ -3,9 +3,9 @@ const productGrid = document.querySelector("#product-grid");
 const productSelect = document.querySelector("#enrollment-product");
 const enrollmentFeedback = document.querySelector("#enrollment-feedback");
 const enrollmentSubmit = document.querySelector("#enrollment-submit");
-const enrollmentApiBase = String(window.SKILLNEST_CONFIG?.apiBase || "").replace(/\/$/, "");
+const enrollmentApiBase = String(window.VIDYAOPS_CONFIG?.apiBase || "").replace(/\/$/, "");
 const enrollmentApiUrl = (pathname) => (enrollmentApiBase ? `${enrollmentApiBase}${pathname}` : pathname);
-const learnerTokenKey = "skillnest_learner_token";
+const learnerTokenKey = "vidyaops_learner_token";
 
 let productCatalog = [];
 let razorpayReady = false;
@@ -116,8 +116,8 @@ async function submitPaidEnrollment(payload) {
     key: result.keyId,
     amount: result.amount,
     currency: result.currency,
-    name: "SkillNest",
-    description: result.product?.name || "SkillNest Workshop",
+    name: "VidyaOps",
+    description: result.product?.name || "VidyaOps Workshop",
     order_id: result.orderId,
     prefill: result.learner,
     theme: {

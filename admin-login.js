@@ -1,7 +1,7 @@
 const loginForm = document.querySelector("#admin-login-form");
 const loginFeedback = document.querySelector("#admin-login-feedback");
-const adminTokenKey = "skillnest_admin_token";
-const apiBase = String(window.SKILLNEST_CONFIG?.apiBase || "").replace(/\/$/, "");
+const adminTokenKey = "vidyaops_admin_token";
+const apiBase = String(window.VIDYAOPS_CONFIG?.apiBase || "").replace(/\/$/, "");
 const apiUrl = (pathname) => (apiBase ? `${apiBase}${pathname}` : pathname);
 
 if (loginForm) {

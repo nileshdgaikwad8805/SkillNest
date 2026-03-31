@@ -2,9 +2,9 @@ const learnerIntro = document.querySelector("#learner-dashboard-intro");
 const learnerSummaryCard = document.querySelector("#learner-summary-card");
 const learnerSuccessMessage = document.querySelector("#payment-success-message");
 const learnerSuccessLink = document.querySelector("#success-dashboard-link");
-const learnerApiBase = String(window.SKILLNEST_CONFIG?.apiBase || "").replace(/\/$/, "");
+const learnerApiBase = String(window.VIDYAOPS_CONFIG?.apiBase || "").replace(/\/$/, "");
 const learnerApiUrl = (pathname) => (learnerApiBase ? `${learnerApiBase}${pathname}` : pathname);
-const learnerTokenStorageKey = "skillnest_learner_token";
+const learnerTokenStorageKey = "vidyaops_learner_token";
 
 function getLearnerToken() {
   const url = new URL(window.location.href);
@@ -46,7 +46,7 @@ function renderLearnerDashboard(enrollment) {
       <p>Phone: ${enrollment.learnerPhone}</p>
       <p>Email: ${enrollment.learnerEmail}</p>
       <p>Onboarding email: ${enrollment.onboardingSent ? "Sent" : "Pending"}</p>
-      <p>Goal: ${enrollment.learnerGoal || "To be updated with SkillNest guidance."}</p>
+      <p>Goal: ${enrollment.learnerGoal || "To be updated with VidyaOps guidance."}</p>
     `;
   }
 

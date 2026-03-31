@@ -1,10 +1,11 @@
 {
-  "name": "skillnest-site",
+  "name": "vidyaops-site",
   "private": true,
   "version": "1.0.0",
-  "description": "SkillNest marketing site with a local Gemini chatbot proxy.",
+  "description": "VidyaOps marketing site with a local Gemini chatbot proxy.",
   "dependencies": {},
   "scripts": {
+    "build:vercel": "node scripts/generate-config.js",
     "start": "node server.js"
   }
 }

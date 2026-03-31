@@ -1,5 +1,5 @@
 const workshopList = document.querySelector("#workshop-list");
-const workshopsApiBase = String(window.SKILLNEST_CONFIG?.apiBase || "").replace(/\/$/, "");
+const workshopsApiBase = String(window.VIDYAOPS_CONFIG?.apiBase || "").replace(/\/$/, "");
 const workshopApiUrl = (pathname) => (workshopsApiBase ? `${workshopsApiBase}${pathname}` : pathname);
 
 function renderWorkshopCard(workshop) {
@@ -27,9 +27,9 @@ async function loadWorkshops() {
     workshopList.innerHTML = `
       <article class="workshop-card reveal is-visible">
         <p class="workshop-card__type">Local Preview</p>
-        <h3>Start the SkillNest server to load live workshops.</h3>
+        <h3>Start the VidyaOps server to load live workshops.</h3>
         <p>The workshop catalog is now database-driven. Open the site through localhost to load and manage workshops from the admin dashboard.</p>
-        <a class="button" href="contact.html">Contact SkillNest</a>
+        <a class="button" href="contact.html">Contact VidyaOps</a>
       </article>
     `;
     return;
@@ -50,7 +50,7 @@ async function loadWorkshops() {
         <article class="workshop-card reveal is-visible">
           <p class="workshop-card__type">No Active Workshops</p>
           <h3>Fresh workshop dates will be announced soon.</h3>
-          <p>Please contact SkillNest or use WhatsApp if you want help choosing the right training path now.</p>
+          <p>Please contact VidyaOps or use WhatsApp if you want help choosing the right training path now.</p>
           <a class="button" href="contact.html">Send Inquiry</a>
         </article>
       `;
@@ -64,7 +64,7 @@ async function loadWorkshops() {
         <p class="workshop-card__type">Unable to Load</p>
         <h3>The workshop list could not be loaded right now.</h3>
         <p>${error instanceof Error ? error.message : "Please try again shortly."}</p>
-        <a class="button" href="contact.html">Contact SkillNest</a>
+        <a class="button" href="contact.html">Contact VidyaOps</a>
       </article>
     `;
   }

@@ -8,23 +8,23 @@ const contactForm = document.querySelector(".contact-card[action]");
 const contactFormFeedback = document.querySelector(".form-feedback");
 const chatbot = document.querySelector(".chatbot");
 const isServedOverHttp = window.location.protocol === "http:" || window.location.protocol === "https:";
-const chatSessionKey = "skillnest_chat_session_id";
-const leadPrefillKey = "skillnest_lead_prefill";
-const apiBase = String(window.SKILLNEST_CONFIG?.apiBase || "").replace(/\/$/, "");
+const chatSessionKey = "vidyaops_chat_session_id";
+const leadPrefillKey = "vidyaops_lead_prefill";
+const apiBase = String(window.VIDYAOPS_CONFIG?.apiBase || "").replace(/\/$/, "");
 const chatSessionId =
   window.localStorage.getItem(chatSessionKey) ||
   (window.crypto?.randomUUID ? window.crypto.randomUUID() : `session-${Date.now()}`);
 const apiUrl = (pathname) => (apiBase ? `${apiBase}${pathname}` : pathname);
-const skillNestKnowledge = {
+const vidyaOpsKnowledge = {
   contact:
-    "You can contact SkillNest at 9284543320, email nileshdgaikwad8805@gmail.com, or use the WhatsApp button on this page for a faster reply.",
+    "You can contact VidyaOps at 9284543320, email nileshdgaikwad8805@gmail.com, or use the WhatsApp button on this page for a faster reply.",
   audience:
-    "SkillNest is built for college students, freshers, early professionals, and knowledge seekers.",
-  location: "SkillNest is based in Pune, Maharashtra.",
+    "VidyaOps is built for college students, freshers, early professionals, and knowledge seekers.",
+  location: "VidyaOps is based in Pune, Maharashtra.",
   services:
-    "SkillNest offers Cloud, Data Analysis, AI, and Cybersecurity trainings, along with free and paid workshops.",
+    "VidyaOps offers Cloud, Data Analysis, AI, and Cybersecurity trainings, along with free and paid workshops.",
   workshops:
-    "SkillNest runs both free and paid workshops. You can check the Upcoming Workshops page to see current workshop options and book your seat.",
+    "VidyaOps runs both free and paid workshops. You can check the Upcoming Workshops page to see current workshop options and book your seat.",
   recommendation:
     "If you are just starting, a free workshop is the best first step. If you already want deeper practical learning, a paid workshop or full training track is a better fit.",
 };
@@ -133,7 +133,7 @@ if (contactForm) {
     const message = String(formData.get("message") || "").trim();
     const recipient = contactForm.dataset.fallbackEmail || "";
 
-    const subject = encodeURIComponent("New SkillNest Inquiry");
+    const subject = encodeURIComponent("New VidyaOps Inquiry");
     const body = encodeURIComponent(
       [
         `Name: ${name}`,
@@ -178,7 +178,7 @@ if (contactForm) {
       if (contactFormFeedback) {
         contactFormFeedback.hidden = false;
         contactFormFeedback.textContent =
-          "Thanks. Your inquiry has been saved successfully in the SkillNest app.";
+          "Thanks. Your inquiry has been saved successfully in the VidyaOps app.";
       }
     } catch (error) {
       if (contactFormFeedback) {
@@ -220,13 +220,13 @@ if (chatbot) {
   const leadSteps = ["name", "contact", "learnerType", "interest"];
   const leadPrompts = {
     name: "Great. What is your name?",
-    contact: "How should SkillNest contact you? Share your phone number or email.",
+    contact: "How should VidyaOps contact you? Share your phone number or email.",
     learnerType: "Are you a college student, fresher, early professional, or knowledge seeker?",
     interest: "Which area are you most interested in: Cloud, Data Analysis, AI, Cybersecurity, Free Workshop, or Paid Workshop?",
   };
   const counselorSteps = ["learnerType", "interest", "goal"];
   const counselorPrompts = {
-    learnerType: "I can help you choose the best SkillNest path. First, are you a college student, fresher, early professional, or knowledge seeker?",
+    learnerType: "I can help you choose the best VidyaOps path. First, are you a college student, fresher, early professional, or knowledge seeker?",
     interest: "Which area are you most interested in right now: Cloud, Data Analysis, AI, Cybersecurity, or workshops in general?",
     goal: "What is your main goal right now: explore a topic, build practical skills, prepare for a career start, or choose the right first step?",
   };
@@ -262,7 +262,7 @@ if (chatbot) {
     const lower = text.toLowerCase();
 
     if (lower.includes("cloud")) {
-      return "SkillNest offers practical Cloud training for college students, freshers, and early professionals. You can ask us through Contact or WhatsApp to know the next batch.";
+      return "VidyaOps offers practical Cloud training for college students, freshers, and early professionals. You can ask us through Contact or WhatsApp to know the next batch.";
     }
 
     if (lower.includes("data")) {
@@ -270,7 +270,7 @@ if (chatbot) {
     }
 
     if (lower.includes("ai")) {
-      return "SkillNest provides AI training for curious learners who want practical exposure, guided learning, and workshop-based understanding of modern AI topics.";
+      return "VidyaOps provides AI training for curious learners who want practical exposure, guided learning, and workshop-based understanding of modern AI topics.";
     }
 
     if (lower.includes("cyber")) {
@@ -278,7 +278,7 @@ if (chatbot) {
     }
 
     if (lower.includes("workshop") || lower.includes("free") || lower.includes("paid")) {
-      return skillNestKnowledge.workshops;
+      return vidyaOpsKnowledge.workshops;
     }
 
     if (
@@ -287,30 +287,30 @@ if (chatbot) {
       lower.includes("best") ||
       lower.includes("start")
     ) {
-      return `${skillNestKnowledge.recommendation} ${skillNestKnowledge.contact}`;
+      return `${vidyaOpsKnowledge.recommendation} ${vidyaOpsKnowledge.contact}`;
     }
 
     if (lower.includes("college") || lower.includes("student") || lower.includes("fresher")) {
-      return skillNestKnowledge.audience;
+      return vidyaOpsKnowledge.audience;
     }
 
     if (lower.includes("contact") || lower.includes("phone") || lower.includes("email") || lower.includes("whatsapp")) {
-      return skillNestKnowledge.contact;
+      return vidyaOpsKnowledge.contact;
     }
 
     if (lower.includes("location") || lower.includes("pune")) {
-      return skillNestKnowledge.location;
+      return vidyaOpsKnowledge.location;
     }
 
     if (lower.includes("service") || lower.includes("training")) {
-      return skillNestKnowledge.services;
+      return vidyaOpsKnowledge.services;
     }
 
     if (lower.includes("hello") || lower.includes("hi")) {
-      return "Hello! I can help with SkillNest trainings, workshops, contact details, audience, and learning paths. What would you like to know?";
+      return "Hello! I can help with VidyaOps trainings, workshops, contact details, audience, and learning paths. What would you like to know?";
     }
 
-    return "I can help with SkillNest trainings in Cloud, Data Analysis, AI, Cybersecurity, workshops, and contact details. Try asking about a course, workshop, how to contact us, or upcoming workshops.";
+    return "I can help with VidyaOps trainings in Cloud, Data Analysis, AI, Cybersecurity, workshops, and contact details. Try asking about a course, workshop, how to contact us, or upcoming workshops.";
   };
 
   const botReplies = async (text, history) => {
@@ -378,7 +378,7 @@ if (chatbot) {
     leadCapture.active = true;
     leadCapture.step = leadSteps[0];
     addMessage(
-      "I can help you get started. I will collect a few details so SkillNest can guide you better.",
+      "I can help you get started. I will collect a few details so VidyaOps can guide you better.",
       "bot"
     );
     addMessage(leadPrompts[leadCapture.step], "bot");
@@ -389,7 +389,7 @@ if (chatbot) {
     counselorFlow.active = true;
     counselorFlow.step = counselorSteps[0];
     addMessage(
-      "I can guide you like a SkillNest counselor. I will ask 3 quick questions, then recommend the best starting path.",
+      "I can guide you like a VidyaOps counselor. I will ask 3 quick questions, then recommend the best starting path.",
       "bot"
     );
     addMessage(counselorPrompts[counselorFlow.step], "bot");
@@ -475,7 +475,7 @@ if (chatbot) {
       reason += " For your stage, clarity and momentum matter more than trying to learn everything at once.";
     }
 
-    return `Based on what you shared, I recommend starting with ${recommendation} ${reason} A good next alternative would be a paid workshop if you want more guided practice before joining a full training track. If you want, continue on the Contact page or WhatsApp so SkillNest can guide you personally.`;
+    return `Based on what you shared, I recommend starting with ${recommendation} ${reason} A good next alternative would be a paid workshop if you want more guided practice before joining a full training track. If you want, continue on the Contact page or WhatsApp so VidyaOps can guide you personally.`;
   };
 
   const completeCounselorFlow = async () => {
@@ -483,7 +483,7 @@ if (chatbot) {
       `Learner type: ${counselorFlow.data.learnerType}\n` +
       `Interest area: ${counselorFlow.data.interest}\n` +
       `Goal: ${counselorFlow.data.goal}\n` +
-      `Please recommend the best SkillNest starting path.`;
+      `Please recommend the best VidyaOps starting path.`;
 
     const history = [
       {
@@ -545,8 +545,8 @@ if (chatbot) {
 
   addMessage(
     isServedOverHttp
-      ? "Hi, I am SkillNest AI. I can answer questions about trainings, workshops, and how to contact SkillNest."
-      : "Hi, I am SkillNest AI. I am in local fallback mode right now. Start the local server with a Gemini API key for full AI answers.",
+      ? "Hi, I am VidyaOps AI. I can answer questions about trainings, workshops, and how to contact VidyaOps."
+      : "Hi, I am VidyaOps AI. I am in local fallback mode right now. Start the local server with a Gemini API key for full AI answers.",
     "bot"
   );
 

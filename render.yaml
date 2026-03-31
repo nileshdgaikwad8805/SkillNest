@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: skillnest-app
+    name: vidyaops-app
     env: node
     plan: free
     buildCommand: npm install

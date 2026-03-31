@@ -1,4 +1,4 @@
-# SkillNest Deployment
+# VidyaOps Deployment
 
 ## Recommended Setup
 
@@ -58,10 +58,23 @@ These hosts are the best fit for the current SQLite + long-running background jo
 Use Vercel in one of these ways:
 
 1. Frontend-only on Vercel, backend elsewhere
-   This is the easiest and most portable setup.
+   This is the recommended setup for the current app.
 2. Full migration after replacing SQLite and long-running jobs
 
-Recommended values if the backend itself is deployed to a serverless platform:
+Important note:
+
+- The current backend uses SQLite and background nurture jobs, so the safest Vercel setup today is `frontend on Vercel + backend on Render/Railway/VPS`.
+- `vercel.json` is now configured for static frontend deployment, not for the current Node + SQLite backend.
+
+Recommended frontend env values on Vercel:
+
+```env
+PUBLIC_API_BASE=https://your-backend-domain.com
+PUBLIC_RUNTIME_MODE=serverless
+PUBLIC_PLATFORM_TARGET=vercel
+```
+
+Recommended backend values if you later move the backend to a serverless platform:
 
 ```env
 PLATFORM_TARGET=vercel
@@ -79,7 +92,7 @@ Required `.env` values:
 
 ```env
 RESEND_API_KEY=your_resend_api_key
-RESEND_FROM_EMAIL=SkillNest <onboarding@resend.dev>
+RESEND_FROM_EMAIL=VidyaOps <onboarding@resend.dev>
 NOTIFY_EMAIL_TO=nileshdgaikwad8805@gmail.com
 ```
 
@@ -94,7 +107,7 @@ After updating `.env`, restart the server and use the `Send Test Email` button i
 3. Use the included `render.yaml`.
 4. Add environment variables from `.env.example`, including:
    `GEMINI_API_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, Resend values, and `ALLOWED_ORIGINS`.
-5. Keep the Render disk enabled so `data/skillnest.db` persists.
+5. Keep the Render disk enabled so `data/skillnest.db` persists. The existing DB filename stays unchanged for compatibility.
 6. Confirm the health check passes at `/api/health`.
 7. Open `/admin-login.html` after deploy and verify:
    login, workshop CRUD, lead status update, and `Send Test Email`.
@@ -107,14 +120,20 @@ ALLOWED_ORIGINS=https://your-render-domain.onrender.com
 
 ## Frontend on Netlify or Vercel
 
-If you deploy the frontend separately, you can either edit [`config.js`](./config.js) or set `PUBLIC_API_BASE` on the backend runtime config route.
+If you deploy the frontend separately, Vercel now generates [`config.js`](./config.js) at build time from env vars.
 
-Static option:
+Vercel build command:
 
-```js
-window.SKILLNEST_CONFIG = {
-  apiBase: "https://your-backend-domain.com",
-};
+```bash
+npm run build:vercel
+```
+
+Set these env vars in Vercel:
+
+```env
+PUBLIC_API_BASE=https://your-backend-domain.com
+PUBLIC_RUNTIME_MODE=serverless
+PUBLIC_PLATFORM_TARGET=vercel
 ```
 
 Then update `ALLOWED_ORIGINS` on the backend to include your frontend domain, for example:

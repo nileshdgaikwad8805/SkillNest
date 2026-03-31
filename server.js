@@ -69,10 +69,10 @@ const PRODUCT_CATALOG = [
     name: "Free Community Workshop Pass",
     priceInr: 0,
     description:
-      "An open-entry SkillNest community workshop for students, freshers, and knowledge seekers who want a low-risk first step.",
+      "An open-entry VidyaOps community workshop for students, freshers, and knowledge seekers who want a low-risk first step.",
     includes: [
       "Live community workshop access",
-      "Skill guidance from SkillNest AI",
+      "Skill guidance from VidyaOps AI",
       "Post-workshop next-step recommendations",
     ],
     ctaLabel: "Register Free",
@@ -155,7 +155,7 @@ function getBaseUrl(request) {
 
 function buildRuntimeClientConfig(request) {
   const baseUrl = PUBLIC_API_BASE || "";
-  return `window.SKILLNEST_CONFIG = window.SKILLNEST_CONFIG || ${JSON.stringify(
+  return `window.VIDYAOPS_CONFIG = window.VIDYAOPS_CONFIG || ${JSON.stringify(
     {
       apiBase: baseUrl,
       runtimeMode: APP_CONFIG.runtimeMode,
@@ -822,9 +822,9 @@ function verifyRazorpaySignature({ orderId, paymentId, signature }) {
 async function notifyInquirySaved({ name, email, organization, interest, message, source, inquiryId, aiSummary, aiNextStep }) {
   try {
     await sendNotificationEmail({
-      subject: `SkillNest inquiry #${inquiryId}: ${interest}`,
+      subject: `VidyaOps inquiry #${inquiryId}: ${interest}`,
       text:
-        `A new SkillNest inquiry was saved.\n\n` +
+        `A new VidyaOps inquiry was saved.\n\n` +
         `Inquiry ID: ${inquiryId}\n` +
         `Name: ${name}\n` +
         `Email: ${email}\n` +
@@ -835,7 +835,7 @@ async function notifyInquirySaved({ name, email, organization, interest, message
         `AI Next Step: ${aiNextStep || "Not generated"}\n\n` +
         `Message:\n${message}`,
       html:
-        `<h2>New SkillNest inquiry</h2>` +
+        `<h2>New VidyaOps inquiry</h2>` +
         `<p><strong>Inquiry ID:</strong> ${inquiryId}</p>` +
         `<p><strong>Name:</strong> ${name}</p>` +
         `<p><strong>Email:</strong> ${email}</p>` +
@@ -854,7 +854,7 @@ async function notifyInquirySaved({ name, email, organization, interest, message
 async function notifyLeadSaved({ name, contact, learnerType, interest, leadId, status, aiSummary, aiNextStep }) {
   try {
     await sendNotificationEmail({
-      subject: `SkillNest chatbot lead #${leadId}: ${interest}`,
+      subject: `VidyaOps chatbot lead #${leadId}: ${interest}`,
       text:
         `A new chatbot lead was saved.\n\n` +
         `Lead ID: ${leadId}\n` +
@@ -866,7 +866,7 @@ async function notifyLeadSaved({ name, contact, learnerType, interest, leadId, s
         `AI Summary: ${aiSummary || "Not generated"}\n` +
         `AI Next Step: ${aiNextStep || "Not generated"}`,
       html:
-        `<h2>New SkillNest chatbot lead</h2>` +
+        `<h2>New VidyaOps chatbot lead</h2>` +
         `<p><strong>Lead ID:</strong> ${leadId}</p>` +
         `<p><strong>Name:</strong> ${name}</p>` +
         `<p><strong>Contact:</strong> ${contact}</p>` +
@@ -918,17 +918,17 @@ async function sendLearnerOnboardingEmail({ request, enrollment }) {
   const subject = `Welcome to ${enrollment.product_name}`;
   const text =
     `Hi ${enrollment.learner_name},\n\n` +
-    `Your SkillNest enrollment is confirmed for ${enrollment.product_name}.\n` +
+    `Your VidyaOps enrollment is confirmed for ${enrollment.product_name}.\n` +
     `Use your learner dashboard here: ${dashboardLink}\n\n` +
     `We will guide you through the next steps, onboarding, and workshop readiness from there.\n\n` +
-    `SkillNest\nKnowledge is the power.`;
+    `VidyaOps\nKnowledge is the power.`;
 
   const html =
     `<p>Hi ${enrollment.learner_name},</p>` +
-    `<p>Your SkillNest enrollment is confirmed for <strong>${enrollment.product_name}</strong>.</p>` +
+    `<p>Your VidyaOps enrollment is confirmed for <strong>${enrollment.product_name}</strong>.</p>` +
     `<p><a href="${dashboardLink}">Open your learner dashboard</a></p>` +
     `<p>We will guide you through the next steps, onboarding, and workshop readiness from there.</p>` +
-    `<p>SkillNest<br>Knowledge is the power.</p>`;
+    `<p>VidyaOps<br>Knowledge is the power.</p>`;
 
   try {
     await sendTransactionalEmail({
@@ -948,17 +948,17 @@ async function sendLearnerOnboardingEmail({ request, enrollment }) {
 function buildInquiryNurtureMessage(record) {
   const stage = Number(record.nurture_stage || 0) + 1;
   const subject = stage === 1
-    ? `Still exploring ${record.interest}? SkillNest can guide you`
+    ? `Still exploring ${record.interest}? VidyaOps can guide you`
     : stage === 2
       ? `A clearer next step for your ${record.interest} journey`
-      : `Last follow-up from SkillNest on ${record.interest}`;
+      : `Last follow-up from VidyaOps on ${record.interest}`;
   const body =
     `Hi ${record.name},\n\n` +
     `We wanted to follow up on your interest in ${record.interest}. ` +
-    `${record.ai_summary || "You reached out to SkillNest for guidance."}\n\n` +
+    `${record.ai_summary || "You reached out to VidyaOps for guidance."}\n\n` +
     `Recommended next step: ${record.ai_next_step || "Start with a guided conversation so we can suggest the right path."}\n\n` +
     `If you would like, reply to this email or reach us on WhatsApp/Contact and we will help you choose the best starting point.\n\n` +
-    `SkillNest\nKnowledge is the power.`;
+    `VidyaOps\nKnowledge is the power.`;
 
   return { subject, body };
 }
@@ -966,17 +966,17 @@ function buildInquiryNurtureMessage(record) {
 function buildLeadNurtureMessage(record) {
   const stage = Number(record.nurture_stage || 0) + 1;
   const subject = stage === 1
-    ? `SkillNest follow-up for your ${record.interest} interest`
+    ? `VidyaOps follow-up for your ${record.interest} interest`
     : stage === 2
       ? `A practical next step for your ${record.interest} goals`
-      : `Checking in from SkillNest`;
+      : `Checking in from VidyaOps`;
   const body =
     `Hi ${record.name},\n\n` +
-    `You recently showed interest in ${record.interest} at SkillNest. ` +
+    `You recently showed interest in ${record.interest} at VidyaOps. ` +
     `${record.ai_summary || "We wanted to make sure you have a clear next step."}\n\n` +
-    `Suggested next move: ${record.ai_next_step || "Talk with SkillNest so we can recommend the right workshop or training."}\n\n` +
+    `Suggested next move: ${record.ai_next_step || "Talk with VidyaOps so we can recommend the right workshop or training."}\n\n` +
     `If you are ready, reply here or connect through WhatsApp/Contact and we will guide you personally.\n\n` +
-    `SkillNest\nKnowledge is the power.`;
+    `VidyaOps\nKnowledge is the power.`;
 
   return { subject, body };
 }
@@ -1074,12 +1074,12 @@ async function generateInquiryAutomation({ name, organization, interest, message
 
   const output = await callGemini({
     instructions:
-      "You are SkillNest's internal AI intake assistant. " +
+      "You are VidyaOps's internal AI intake assistant. " +
       "Summarize incoming inquiries for admins. " +
       "Return exactly these lines: SCORE: ..., SUMMARY: ..., NEXT_STEP: ..., FOLLOWUP_SUBJECT: ..., FOLLOWUP_BODY: ... " +
       "Use an integer score from 1 to 100. " +
       "Keep summary and next step concise, practical, and actionable. " +
-      "The follow-up should be a short email body from SkillNest that warmly guides the learner to the best next step. " +
+      "The follow-up should be a short email body from VidyaOps that warmly guides the learner to the best next step. " +
       "Do not invent details.",
     contents: [
       {
@@ -1119,12 +1119,12 @@ async function generateLeadAutomation({ name, learnerType, interest, contact }) 
 
   const output = await callGemini({
     instructions:
-      "You are SkillNest's internal AI lead triage assistant. " +
-      "Summarize a lead and recommend the best next step for the SkillNest team. " +
+      "You are VidyaOps's internal AI lead triage assistant. " +
+      "Summarize a lead and recommend the best next step for the VidyaOps team. " +
       "Return exactly these lines: SCORE: ..., SUMMARY: ..., NEXT_STEP: ..., FOLLOWUP_SUBJECT: ..., FOLLOWUP_BODY: ... " +
       "Use an integer score from 1 to 100. " +
       "Keep the advice actionable and short. " +
-      "The follow-up should be a short outreach email from SkillNest that matches the lead's learner type and interest. " +
+      "The follow-up should be a short outreach email from VidyaOps that matches the lead's learner type and interest. " +
       "Do not invent fees, dates, or commitments.",
     contents: [
       {
@@ -1168,7 +1168,7 @@ async function generateWorkshopAutomation({ title, type, description, scheduleTe
 
   const output = await callGemini({
     instructions:
-      "You are SkillNest's internal AI marketing assistant. " +
+      "You are VidyaOps's internal AI marketing assistant. " +
       "Create ready-to-use marketing assets for a workshop. " +
       "Return exactly these sections: WORKSHOP_DESCRIPTION:, ANNOUNCEMENT:, SOCIAL_POSTS:. " +
       "Keep it polished and practical. " +
@@ -1185,7 +1185,7 @@ async function generateWorkshopAutomation({ title, type, description, scheduleTe
               `Schedule: ${scheduleText}\n` +
               `Duration: ${durationText}\n` +
               `Level: ${levelText}\n` +
-              `Brand: SkillNest, Pune, Maharashtra. Knowledge is the power.\n`,
+              `Brand: VidyaOps, Pune, Maharashtra. Knowledge is the power.\n`,
           },
         ],
       },
@@ -1225,14 +1225,14 @@ async function handleChat(request, response) {
     }
 
     const baseInstructions =
-      "You are SkillNest AI, the admissions and learner guidance assistant for SkillNest in Pune, Maharashtra. " +
-      "SkillNest offers Cloud, Data Analysis, AI, and Cybersecurity trainings plus free and paid workshops. " +
+      "You are VidyaOps AI, the admissions and learner guidance assistant for VidyaOps in Pune, Maharashtra. " +
+      "VidyaOps offers Cloud, Data Analysis, AI, and Cybersecurity trainings plus free and paid workshops. " +
       "Primary audience: college students, freshers, early professionals, and knowledge seekers. " +
       "Keep replies concise, warm, practical, and conversion-aware. " +
       "Do not invent prices, schedules, certifications, job guarantees, or promises that are not provided. " +
-      "If asked for location, say SkillNest is based in Pune, Maharashtra. " +
-      "If asked who SkillNest is for, mention college students, freshers, early professionals, and knowledge seekers. " +
-      "When a user shows buying intent, wants to enroll, asks for dates, fees, next batch, or deeper details not present in site context, tell them to contact SkillNest directly at phone 9284543320, email nileshdgaikwad8805@gmail.com, or WhatsApp.";
+      "If asked for location, say VidyaOps is based in Pune, Maharashtra. " +
+      "If asked who VidyaOps is for, mention college students, freshers, early professionals, and knowledge seekers. " +
+      "When a user shows buying intent, wants to enroll, asks for dates, fees, next batch, or deeper details not present in site context, tell them to contact VidyaOps directly at phone 9284543320, email nileshdgaikwad8805@gmail.com, or WhatsApp.";
 
     const counselorInstructions =
       baseInstructions +
@@ -1298,7 +1298,7 @@ async function handleAdminAiContent(request, response) {
     }
 
     const instructions =
-      "You are SkillNest's internal AI content assistant for admins. " +
+      "You are VidyaOps's internal AI content assistant for admins. " +
       "Generate polished marketing content for a training brand in Pune offering Cloud, Data Analysis, AI, Cybersecurity, and workshop-based learning. " +
       "Write in a premium, practical, human tone. " +
       "Keep the output ready to use, specific, and clear. " +
@@ -1756,7 +1756,7 @@ async function handleRazorpayOrderCreate(request, response) {
 
     const order = await createRazorpayOrder({
       amountInr: product.priceInr,
-      receipt: `skillnest_${enrollmentId}`,
+      receipt: `vidyaops_${enrollmentId}`,
       notes: {
         enrollment_id: String(enrollmentId),
         product_id: product.id,
@@ -2035,11 +2035,11 @@ async function handleAdminTestEmail(request, response) {
     }
 
     await sendNotificationEmail({
-      subject: "SkillNest notification test",
+      subject: "VidyaOps notification test",
       text:
-        "This is a SkillNest test email. Gmail SMTP is configured correctly if you received this message.",
+        "This is a VidyaOps test email. Gmail SMTP is configured correctly if you received this message.",
       html:
-        "<h2>SkillNest notification test</h2><p>Gmail SMTP is configured correctly if you received this message.</p>",
+        "<h2>VidyaOps notification test</h2><p>Gmail SMTP is configured correctly if you received this message.</p>",
     });
 
     sendJson(response, 200, { success: true });
@@ -2064,7 +2064,7 @@ function handleCsvExport(request, response, kind) {
 
   const csv = toCsv(rows);
   sendText(response, 200, csv, "text/csv; charset=utf-8", {
-    "Content-Disposition": `attachment; filename="skillnest-${kind}.csv"`,
+    "Content-Disposition": `attachment; filename="vidyaops-${kind}.csv"`,
   });
 }
 
@@ -2173,7 +2173,7 @@ const server = http.createServer((request, response) => {
   if (request.method === "GET" && requestUrl.pathname === "/api/health") {
     sendJson(response, 200, {
       ok: true,
-      service: "skillnest",
+      service: "vidyaops",
       time: new Date().toISOString(),
     });
     return;
@@ -2258,7 +2258,7 @@ const server = http.createServer((request, response) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`SkillNest server running at http://${HOST}:${PORT}`);
+  console.log(`VidyaOps server running at http://${HOST}:${PORT}`);
   console.log(`Database ready at ${DB_PATH}`);
   console.log(`Platform target: ${APP_CONFIG.platformTarget} (${APP_CONFIG.runtimeMode})`);
   if (APP_CONFIG.enableBackgroundJobs) {
